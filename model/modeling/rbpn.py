@@ -11,9 +11,20 @@ class Net(nn.Module):
         #base_filter=256
         #feat=64
         
-        input_channel = cfg.MODEL.INPUT_CHANNEL
+        # input_channel = cfg.MODEL.INPUT_CHANNEL
+        if cfg.MODEL.PREPROCESS == "Nearest":
+            input_channel = 3
+            scale_factor = 4
+            self.preprocess = Nearest()
+        elif cfg.MODEL.PREPROCESS == "RGGB2channel":
+            input_channel = 4
+            scale_factor = 8
+            self.preprocess = RGGB2channel()
+        else:
+            raise ValueError
+        
         output_channel = cfg.MODEL.OUTPUT_CHANNEL
-        scale_factor = cfg.MODEL.SCALE_FACTOR
+        # scale_factor = cfg.MODEL.SCALE_FACTOR
         base_filter = cfg.MODEL.BASE_FILTER
         feat = cfg.MODEL.FEAT
         n_resblock = cfg.MODEL.NUM_RESBLOCK
@@ -83,6 +94,8 @@ class Net(nn.Module):
                     
             
     def forward(self, x, flow=None):
+        x = self.preprocess(x)
+        
         base_frame = x[:, 0, :, :, :]
         neigbor_frame = x[:, 1:, :, :]
 
@@ -112,3 +125,26 @@ class Net(nn.Module):
         output = self.output(out)
 
         return output
+    
+    
+class Nearest(object):
+    def __init__(self):
+        self.up = nn.Upsample(scale_factor=2, mode='nearest')
+
+    def __call__(self, x):
+        batch, frame, channel, width, height = x.shape
+
+        out = torch.empty((batch, frame, 3, width*2, height*2)).to(x.device)
+        
+        out[:, :, 0, :, :] = self.up(x[:, :, 0, :, :])
+        out[:, :, 1, :, :] = ( self.up(x[:, :, 1, :, :]) + self.up(x[:, :, 2, :, :]) )/ 2
+        out[:, :, 2, :, :] = self.up(x[:, :, 3, :, :])
+
+        return out
+    
+class RGGB2channel(object):
+    def __init__(self):
+        pass
+    
+    def __call__(self, x):
+        return x

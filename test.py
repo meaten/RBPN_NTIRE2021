@@ -1,35 +1,22 @@
 import argparse
 import os
 import numpy as np
+import datetime
+import cv2
 
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SequentialSampler, BatchSampler
 
 from model.config import cfg
+from model.engine.trainer import do_train
+from model.modeling.build_model import ModelWithLoss
+from model.utils.misc import fix_model_state_dict
+from model.provided_toolkit.datasets.synthetic_burst_val_set import SyntheticBurstVal
+from model.provided_toolkit.datasets.zurich_raw2rgb_dataset import ZurichRAW2RGB
 
 
-def test(args, cfg):
-    device = torch.device('cuda')
-    model = 
-    print('------------Model Architecture-------------')
-    print(model)
-
-    print('Loading Datasets...')
-    test_transforms = 
-    test_dataset = 
-    sampler = 
-    batch_sampler = BatchSampler(sampler=sampler, batch_size=args.batch_size, drop_last=False)
-    test_loader = DataLoader(test_dataset, num_workers=args.num_workers, batch_sampler=batch_sampler)
-
-    model.load_state_dict(torch.load(args.trained_model))
-
-    if args.num_gpus > 1:
-        model = torch.nn.DataParallel(model, device_ids=list(range(args.num_gpus)))
-
-    do_test(args, cfg, model, test_loader, device)
-
-def main():
+def parse_args() -> None:
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--config_file', type=str, default='', metavar='FILE', help='')
     parser.add_argument('--output_dirname', type=str, default='')
@@ -38,7 +25,51 @@ def main():
     parser.add_argument('--num_gpus', type=int, default=1)
     parser.add_argument('--trained_model', type=str, default='')
 
-    args = parser.parse_args()
+    return parser.parse_args()    
+
+
+def test(args, cfg):
+    device = torch.device('cuda')
+    model = ModelWithLoss(cfg).to(device)
+    print('------------Model Architecture-------------')
+    print(model)
+
+    print('Loading Datasets...')
+    # test_transforms = 
+    test_dataset = SyntheticBurstVal(cfg.DATASET.TEST_SYNTHETIC)
+    model.load_state_dict(fix_model_state_dict(torch.load(args.trained_model)))
+    model.cuda()
+    
+    do_test(args, cfg, model, test_dataset, device)
+    
+    
+def do_test(args, cfg, model, test_dataset, device):
+    for idx in range(len(test_dataset)):
+        burst, burst_name = test_dataset[idx]
+        burst.to(device)
+        shape = burst.shape
+        
+        burst_size = 14
+        n_frames = cfg.MODEL.BURST_SIZE
+        n_ensemble = burst_size - n_frames + 1
+        ensemble_idx = np.array([np.arange(idx, idx+n_frames) for idx in range(n_ensemble)])
+        ensemble_burst = torch.zeros([n_ensemble, n_frames, *shape[1:]]).to(device)
+        for i, idx in enumerate(ensemble_idx):
+            ensemble_burst[i] = burst[idx]
+        ensemble_burst.to(device)
+        
+        with torch.no_grad():
+            net_pred = model.model(ensemble_burst)
+            net_pred = torch.mean(net_pred, axis=0)
+        # Normalize to 0  2^14 range and convert to numpy array
+        net_pred_np = (net_pred.squeeze(0).permute(1, 2, 0).clamp(0.0, 1.0) * 2 ** 14).cpu().numpy().astype(np.uint16)
+        
+        # Save predictions as png
+        cv2.imwrite(os.path.join(cfg.OUTPUT_DIRNAME, '{}.png'.format(burst_name)), net_pred_np)
+
+
+def main():
+    args = parse_args()
 
     if len(args.config_file) > 0:
         print('Configuration file is loaded from {}'.format(args.config_file))
@@ -46,9 +77,10 @@ def main():
 
     if len(args.output_dirname) == 0:
         dt_now = datetime.datetime.now()
-        output_dirname = os.path.join('output', str(dt_now.date()) + '_' + str(dt_now.time()))
+        output_dirname = os.path.join('output', "images", os.path.splitext(args.trained_model)[0])
     else:
         output_dirname = args.output_dirname
+    os.makedirs(output_dirname, exist_ok=True)
     cfg.OUTPUT_DIRNAME = output_dirname
     cfg.freeze()
 
