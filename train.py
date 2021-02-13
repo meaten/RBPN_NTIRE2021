@@ -8,6 +8,8 @@ import torch
 from torch.utils.data import DataLoader, RandomSampler
 from torch.utils.data.sampler import BatchSampler, SequentialSampler
 from torch.utils.tensorboard import SummaryWriter
+from torch.optim.lr_scheduler import MultiStepLR
+import torch_optimizer as optim
 
 from model.config import cfg
 from model.engine.trainer import do_train
@@ -51,6 +53,7 @@ def train(args, cfg):
     #     data_loader['val'] = val_loader
 
     optimizer = torch.optim.Adam(filter(lambda p:p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
+    scheduler = MultiStepLR(optimizer, cfg.SOLVER.LR_STEP, gamma=0.1)
 
     if args.resume_iter != 0:
         print('Resume from {}'.format(os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(args.resume_iter))))
@@ -68,7 +71,7 @@ def train(args, cfg):
     else:
         summary_writer = None
 
-    do_train(args, cfg, model, optimizer, data_loader, device, summary_writer)
+    do_train(args, cfg, model, optimizer, scheduler, data_loader, device, summary_writer)
 
 
 def main():

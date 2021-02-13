@@ -4,3 +4,4 @@ yacs
 tqdm
 tensorboard
 opencv-python
+torch_optimizer

@@ -68,7 +68,8 @@ class Net(nn.Module):
         
         #Reconstruction
         self.output = ConvBlock((burst_size-1)*feat, output_channel, 3, 1, 1, activation=None, norm=None)
-        
+
+
         for m in self.modules():
             classname = m.__class__.__name__
             if classname.find('Conv2d') != -1:
@@ -79,10 +80,12 @@ class Net(nn.Module):
         	    torch.nn.init.kaiming_normal_(m.weight)
         	    if m.bias is not None:
         		    m.bias.data.zero_()
+                    
             
     def forward(self, x, flow=None):
         base_frame = x[:, 0, :, :, :]
         neigbor_frame = x[:, 1:, :, :]
+
         ### initial feature extraction
         feat_input = self.feat0(base_frame)
         feat_frame=[]
@@ -107,5 +110,5 @@ class Net(nn.Module):
         ####Reconstruction
         out = torch.cat(Ht,1)        
         output = self.output(out)
-        
+
         return output
