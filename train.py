@@ -86,7 +86,6 @@ def main():
         cfg.merge_from_file(args.config_file)
     
     if len(args.output_dirname) == 0:
-        print('wwwww')
         dt_now = datetime.datetime.now()
         output_dirname = os.path.join('output', str(dt_now.date()) + '_' + str(dt_now.time()))
     else:
