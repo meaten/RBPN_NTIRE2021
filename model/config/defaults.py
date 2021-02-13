@@ -3,7 +3,7 @@ from yacs.config import CfgNode as CN
 _C = CN()
 
 _C.MODEL = CN()
-_C.MODEL.SCALE_FACTOR = 4
+# _C.MODEL.SCALE_FACTOR = 4
 _C.MODEL.BASE_FILTER = 256
 _C.MODEL.FEAT = 64
 _C.MODEL.BURST_SIZE = 8

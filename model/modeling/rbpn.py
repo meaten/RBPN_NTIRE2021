@@ -14,12 +14,17 @@ class Net(nn.Module):
         # input_channel = cfg.MODEL.INPUT_CHANNEL
         if cfg.MODEL.PREPROCESS == "Nearest":
             input_channel = 3
-            self.preprocess = RGGB2RBG()
+            scale_factor = 4
+            self.preprocess = Nearest()
+        elif cfg.MODEL.PREPROCESS == "RGGB2channel":
+            input_channel = 4
+            scale_factor = 8
+            self.preprocess = RGGB2channel()
         else:
             raise ValueError
         
         output_channel = cfg.MODEL.OUTPUT_CHANNEL
-        scale_factor = cfg.MODEL.SCALE_FACTOR
+        # scale_factor = cfg.MODEL.SCALE_FACTOR
         base_filter = cfg.MODEL.BASE_FILTER
         feat = cfg.MODEL.FEAT
         n_resblock = cfg.MODEL.NUM_RESBLOCK
@@ -119,7 +124,7 @@ class Net(nn.Module):
         return output
     
     
-class RGGB2RBG(object):
+class Nearest(object):
     def __init__(self):
         self.up = nn.Upsample(scale_factor=2, mode='nearest')
 
@@ -133,3 +138,10 @@ class RGGB2RBG(object):
         out[:, :, 2, :, :] = self.up(x[:, :, 3, :, :])
 
         return out
+    
+class RGGB2channel(object):
+    def __init__(self):
+        pass
+    
+    def __call__(self, x):
+        return x
