@@ -19,6 +19,20 @@ from model.provided_toolkit.datasets.synthetic_burst_train_set import SyntheticB
 from model.provided_toolkit.datasets.zurich_raw2rgb_dataset import ZurichRAW2RGB
 
 
+def parse_args() -> None:
+    parser = argparse.ArgumentParser(description='pytorch training code')
+    parser.add_argument('--config_file', type=str, default='', metavar='FILE', help='path to config file')
+    parser.add_argument('--debug', action='store_true', help='debug mode')
+    parser.add_argument('--output_dirname', type=str, default='', help='')
+    parser.add_argument('--log_step', type=int, default=50, help='')
+    parser.add_argument('--eval_step', type=int, default=0, help='')
+    parser.add_argument('--save_step', type=int, default=50000, help='')
+    parser.add_argument('--num_gpus', type=int, default=1, help='')
+    parser.add_argument('--num_workers', type=int, default=16, help='')
+    parser.add_argument('--resume_iter', type=int, default=0, help='')
+
+    return parser.parse_args()
+
 def train(args, cfg):
     device = torch.device('cuda')
     model = ModelWithLoss(cfg).to(device)
@@ -29,7 +43,7 @@ def train(args, cfg):
     data_loader = {}
 
     # train_transforms = 
-    train_dataset = SyntheticBurst(ZurichRAW2RGB(cfg.DATASET.TRAIN), crop_sz=cfg.SOLVER.PATCH_SIZE)
+    train_dataset = SyntheticBurst(ZurichRAW2RGB(cfg.DATASET.TRAIN), burst_size=cfg.MODEL.NUM_FRAMES, crop_sz=cfg.SOLVER.PATCH_SIZE)
     sampler = RandomSampler(train_dataset)
     batch_sampler = BatchSampler(sampler=sampler, batch_size=cfg.SOLVER.BATCH_SIZE, drop_last=True)
     batch_sampler = IterationBasedBatchSampler(batch_sampler, num_iterations=cfg.SOLVER.MAX_ITER)
@@ -68,18 +82,7 @@ def train(args, cfg):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='pytorch training code')
-    parser.add_argument('--config_file', type=str, default='', metavar='FILE', help='path to config file')
-    parser.add_argument('--debug', action='store_true', help='debug mode')
-    parser.add_argument('--output_dirname', type=str, default='', help='')
-    parser.add_argument('--log_step', type=int, default=50, help='')
-    parser.add_argument('--eval_step', type=int, default=0, help='')
-    parser.add_argument('--save_step', type=int, default=50000, help='')
-    parser.add_argument('--num_gpus', type=int, default=1, help='')
-    parser.add_argument('--num_workers', type=int, default=16, help='')
-    parser.add_argument('--resume_iter', type=int, default=0, help='')
-
-    args = parser.parse_args()
+    args = parse_args()
 
     if len(args.config_file) > 0:
         print('Configration file is loaded from {}'.format(args.config_file))
