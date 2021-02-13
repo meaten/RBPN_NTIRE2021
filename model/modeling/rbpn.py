@@ -17,7 +17,7 @@ class Net(nn.Module):
         base_filter = cfg.MODEL.BASE_FILTER
         feat = cfg.MODEL.FEAT
         n_resblock = cfg.MODEL.NUM_RESBLOCK
-        nFrames = cfg.MODEL.NUM_FRAMES
+        burst_size = cfg.MODEL.BURST_SIZE
 
         self.use_flow = cfg.MODEL.USE_FLOW
         
@@ -67,7 +67,7 @@ class Net(nn.Module):
         self.res_feat3 = nn.Sequential(*modules_body3)
         
         #Reconstruction
-        self.output = ConvBlock((nFrames-1)*feat, output_channel, 3, 1, 1, activation=None, norm=None)
+        self.output = ConvBlock((burst_size-1)*feat, output_channel, 3, 1, 1, activation=None, norm=None)
         
         for m in self.modules():
             classname = m.__class__.__name__

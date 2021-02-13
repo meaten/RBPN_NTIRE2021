@@ -5,6 +5,8 @@ import datetime
 
 import torch
 
+from model.utils.misc import SaveTorchImage
+
 
 def do_train(args, cfg, model, optimizer, data_loader, device, summary_writer):
     max_iter = len(data_loader['train']) + args.resume_iter
