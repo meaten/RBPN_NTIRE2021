@@ -36,7 +36,7 @@ def test(args, cfg):
 
     print('Loading Datasets...')
     # test_transforms = 
-    test_dataset = SyntheticBurstVal(cfg.DATASET.TEST)
+    test_dataset = SyntheticBurstVal(cfg.DATASET.TEST_SYNTHETIC)
     model.load_state_dict(fix_model_state_dict(torch.load(args.trained_model)))
     model.cuda()
     
@@ -50,7 +50,7 @@ def do_test(args, cfg, model, test_dataset, device):
         shape = burst.shape
         
         burst_size = 14
-        n_frames = cfg.MODEL.NUM_FRAMES
+        n_frames = cfg.MODEL.BURST_SIZE
         n_ensemble = burst_size - n_frames + 1
         ensemble_idx = np.array([np.arange(idx, idx+n_frames) for idx in range(n_ensemble)])
         ensemble_burst = torch.zeros([n_ensemble, n_frames, *shape[1:]]).to(device)

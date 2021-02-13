@@ -17,6 +17,7 @@ from model.utils.sync_batchnorm import convert_model
 from model.utils.misc import str2bool, fix_model_state_dict
 from model.provided_toolkit.datasets.synthetic_burst_train_set import SyntheticBurst
 from model.provided_toolkit.datasets.zurich_raw2rgb_dataset import ZurichRAW2RGB
+from model.provided_toolkit.datasets.burstsr_dataset import BurstSRDataset
 
 
 def parse_args() -> None:
@@ -43,7 +44,10 @@ def train(args, cfg):
     data_loader = {}
 
     # train_transforms = 
-    train_dataset = SyntheticBurst(ZurichRAW2RGB(cfg.DATASET.TRAIN), burst_size=cfg.MODEL.NUM_FRAMES, crop_sz=cfg.SOLVER.PATCH_SIZE)
+    if cfg.DATASET.TRACK == 'synthetic':
+        train_dataset = SyntheticBurst(ZurichRAW2RGB(cfg.DATASET.TRAIN_SYNTHETIC), crop_sz=cfg.SOLVER.PATCH_SIZE, burst_size=cfg.MODEL.BURST_SIZE)
+    elif cfg.DATASET.TRACK == 'real':
+        train_dataset = BurstSRDataset(cfg.DATASET.TRAIN_REAL, crop_sz=cfg.SOLVER.PATCH_SIZE // cfg.MODEL.SCALE_FACTOR, burst_size=cfg.MODEL.BURST_SIZE)
     sampler = RandomSampler(train_dataset)
     batch_sampler = BatchSampler(sampler=sampler, batch_size=cfg.SOLVER.BATCH_SIZE, drop_last=True)
     batch_sampler = IterationBasedBatchSampler(batch_sampler, num_iterations=cfg.SOLVER.MAX_ITER)
@@ -95,6 +99,8 @@ def main():
         output_dirname = args.output_dirname
     cfg.OUTPUT_DIR = output_dirname
     cfg.freeze()
+
+    print('output dirname: {}'.format(cfg.OUTPUT_DIR))
 
     torch.manual_seed(cfg.SEED)
     np.random.seed(cfg.SEED)
