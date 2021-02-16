@@ -8,7 +8,7 @@ import torch
 from model.utils.misc import SaveTorchImage
 
 
-def do_train(args, cfg, model, optimizer, data_loader, device, summary_writer):
+def do_train(args, cfg, model, optimizer, scheduler, data_loader, device, summary_writer):
     max_iter = len(data_loader['train']) + args.resume_iter
     trained_time = 0
     tic = time.time()
@@ -25,6 +25,7 @@ def do_train(args, cfg, model, optimizer, data_loader, device, summary_writer):
 
         loss.backward()
         optimizer.step()
+        scheduler.step()
 
         logging_loss += loss.item()
 
