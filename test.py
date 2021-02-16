@@ -3,17 +3,15 @@ import os
 import numpy as np
 import datetime
 import cv2
+from tqdm import tqdm
 
 import torch
-from torch.utils.data import DataLoader
-from torch.utils.data.sampler import SequentialSampler, BatchSampler
 
 from model.config import cfg
 from model.engine.trainer import do_train
 from model.modeling.build_model import ModelWithLoss
 from model.utils.misc import fix_model_state_dict
 from model.provided_toolkit.datasets.synthetic_burst_val_set import SyntheticBurstVal
-from model.provided_toolkit.datasets.zurich_raw2rgb_dataset import ZurichRAW2RGB
 
 
 def parse_args() -> None:
@@ -44,7 +42,11 @@ def test(args, cfg):
     
     
 def do_test(args, cfg, model, test_dataset, device):
-    for idx in range(len(test_dataset)):
+    submit_dir = os.path.join(cfg.OUTPUT_DIRNAME, "submit")
+    vis_dir = os.path.join(cfg.OUTPUT_DIRNAME, "visualize")
+    os.makedirs(submit_dir, exist_ok=True)
+    os.makedirs(vis_dir, exist_ok=True)
+    for idx in tqdm(range(len(test_dataset))):
         burst, burst_name = test_dataset[idx]
         burst.to(device)
         shape = burst.shape
@@ -62,10 +64,12 @@ def do_test(args, cfg, model, test_dataset, device):
             net_pred = model.model(ensemble_burst)
             net_pred = torch.mean(net_pred, axis=0)
         # Normalize to 0  2^14 range and convert to numpy array
-        net_pred_np = (net_pred.squeeze(0).permute(1, 2, 0).clamp(0.0, 1.0) * 2 ** 14).cpu().numpy().astype(np.uint16)
+        net_pred_submit = (net_pred.squeeze(0).permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 14)).cpu().numpy().astype(np.uint16)
+        net_pred_visualize = (net_pred.squeeze(0).permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8)).cpu().numpy().astype(np.uint8)
         
         # Save predictions as png
-        cv2.imwrite(os.path.join(cfg.OUTPUT_DIRNAME, '{}.png'.format(burst_name)), net_pred_np)
+        cv2.imwrite(os.path.join(submit_dir, '{}.png'.format(burst_name)), net_pred_submit)
+        cv2.imwrite(os.path.join(vis_dir, '{}.png'.format(burst_name)), net_pred_visualize)
 
 
 def main():
