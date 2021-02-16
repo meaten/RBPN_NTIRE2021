@@ -55,6 +55,7 @@ def do_test(args, cfg, model, test_dataset, device):
         n_frames = cfg.MODEL.BURST_SIZE
         n_ensemble = burst_size - n_frames + 1
         ensemble_idx = np.array([np.arange(idx, idx+n_frames) for idx in range(n_ensemble)])
+        ensemble_idx[:, 0] = 0
         ensemble_burst = torch.zeros([n_ensemble, n_frames, *shape[1:]]).to(device)
         for i, idx in enumerate(ensemble_idx):
             ensemble_burst[i] = burst[idx]
