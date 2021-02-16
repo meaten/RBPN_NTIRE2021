@@ -6,15 +6,12 @@ import cv2
 from tqdm import tqdm
 
 import torch
-from torch.utils.data import DataLoader
-from torch.utils.data.sampler import SequentialSampler, BatchSampler
 
 from model.config import cfg
 from model.engine.trainer import do_train
 from model.modeling.build_model import ModelWithLoss
 from model.utils.misc import fix_model_state_dict
 from model.provided_toolkit.datasets.synthetic_burst_val_set import SyntheticBurstVal
-from model.provided_toolkit.datasets.zurich_raw2rgb_dataset import ZurichRAW2RGB
 
 
 def parse_args() -> None:
