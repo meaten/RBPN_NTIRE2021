@@ -3,6 +3,7 @@ import os
 import numpy as np
 import datetime
 import cv2
+from tqdm import tqdm
 
 import torch
 from torch.utils.data import DataLoader
@@ -44,7 +45,7 @@ def test(args, cfg):
     
     
 def do_test(args, cfg, model, test_dataset, device):
-    for idx in range(len(test_dataset)):
+    for idx in tqdm(range(len(test_dataset))):
         burst, burst_name = test_dataset[idx]
         burst.to(device)
         shape = burst.shape
