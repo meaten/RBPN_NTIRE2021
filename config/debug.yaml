@@ -1,4 +1,6 @@
 SOLVER:
-  BATCH_SIZE: 8
+  BATCH_SIZE: 1
   LR_STEP: [100, 200]
   LR: 1e-4
+DATASET:
+  TRACK: 'real'

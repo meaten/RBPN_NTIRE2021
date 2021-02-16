@@ -49,7 +49,7 @@ def train(args, cfg):
     if cfg.DATASET.TRACK == 'synthetic':
         train_dataset = SyntheticBurst(ZurichRAW2RGB(cfg.DATASET.TRAIN_SYNTHETIC), crop_sz=cfg.SOLVER.PATCH_SIZE, burst_size=cfg.MODEL.BURST_SIZE)
     elif cfg.DATASET.TRACK == 'real':
-        train_dataset = BurstSRDataset(cfg.DATASET.TRAIN_REAL, crop_sz=cfg.SOLVER.PATCH_SIZE // cfg.MODEL.SCALE_FACTOR, burst_size=cfg.MODEL.BURST_SIZE)
+        train_dataset = BurstSRDataset(cfg.DATASET.TRAIN_REAL, crop_sz=cfg.SOLVER.PATCH_SIZE // 4, burst_size=cfg.MODEL.BURST_SIZE)
     sampler = RandomSampler(train_dataset)
     batch_sampler = BatchSampler(sampler=sampler, batch_size=cfg.SOLVER.BATCH_SIZE, drop_last=True)
     batch_sampler = IterationBasedBatchSampler(batch_sampler, num_iterations=cfg.SOLVER.MAX_ITER)
