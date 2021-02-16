@@ -12,6 +12,7 @@ _C.MODEL.USE_FLOW = False
 # _C.MODEL.INPUT_CHANNEL = 3
 _C.MODEL.PREPROCESS = "Nearest"
 _C.MODEL.OUTPUT_CHANNEL = 3
+_C.MODEL.TYPE = 'normal'  # 'normal' or 'deform'
 
 _C.SOLVER = CN()
 _C.SOLVER.LR = 1e-4
