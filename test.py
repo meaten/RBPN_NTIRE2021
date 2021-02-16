@@ -70,6 +70,9 @@ def do_test(args, cfg, model, test_dataset, device):
         # Save predictions as png
         cv2.imwrite(os.path.join(submit_dir, '{}.png'.format(burst_name)), net_pred_submit)
         cv2.imwrite(os.path.join(vis_dir, '{}.png'.format(burst_name)), net_pred_visualize)
+        
+    import shutil
+    shutil.make_archive(os.path.join(cfg.OUTPUT_DIRNAME, "submit"), 'zip', root_dir=submit_dir)
 
 
 def main():
