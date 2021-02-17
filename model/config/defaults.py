@@ -25,8 +25,10 @@ _C.SOLVER.LR_STEP = [300000, 450000]
 _C.DATASET = CN()
 _C.DATASET.TRACK = 'synthetic'
 _C.DATASET.TRAIN_SYNTHETIC = 'dataset/Zurich'
-_C.DATASET.TEST_SYNTHETIC = 'dataset/syn_burst_val'
-_C.DATASET.TRAIN_REAL = 'dataset/burstsr_dataset'
+_C.DATASET.VAL_SYNTHETIC = 'dataset/syn_burst_val'
+_C.DATASET.REAL = 'dataset/burstsr_dataset'
+
+_C.PWCNET_WEIGHT = 'model/provided_toolkit/pwcnet/pwcnet-network-default.pth'
 
 _C.OUTPUT_DIR = ''
 _C.SEED = 123

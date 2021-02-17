@@ -1,4 +1,4 @@
-torch
+torch==1.4.0
 torchvision
 yacs
 tqdm
@@ -6,3 +6,4 @@ tensorboard
 opencv-python
 torch_optimizer
 exifread
+cupy>=7.7.0,<8.0.0

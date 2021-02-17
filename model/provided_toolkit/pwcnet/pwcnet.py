@@ -8,7 +8,7 @@ import PIL.Image
 import sys
 
 try:
-    from pwcnet.correlation import correlation # the custom cost volume layer
+    from model.provided_toolkit.pwcnet.correlation import correlation # the custom cost volume layer
 except:
     sys.path.insert(0, './correlation'); import correlation # you should consider upgrading python
 
