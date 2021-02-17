@@ -18,10 +18,12 @@ class Net(nn.Module):
             input_channel = 3
             scale_factor = 4
             self.preprocess = Nearest()
+            self.size_adjuster = nn.Upsample(scale_factor=1)
         elif cfg.MODEL.PREPROCESS == "RGGB2channel":
             input_channel = 4
             scale_factor = 8
             self.preprocess = RGGB2channel()
+            self.size_adjuster = nn.Upsample(scale_factor=0.5)
         else:
             raise ValueError
         
@@ -96,6 +98,7 @@ class Net(nn.Module):
         	    torch.nn.init.kaiming_normal_(m.weight)
         	    if m.bias is not None:
         		    m.bias.data.zero_()
+
                     
             
     def forward(self, x, flow=None):
@@ -112,7 +115,7 @@ class Net(nn.Module):
         offset_features = []
         for j in range(neigbor_frame.shape[1]):
             if self.use_flow:
-                offset_features.append(self.init_conv_for_offset(torch.cat((base_frame, neigbor_frame[:, j, :, :, :], flow[j]), 1)))
+                offset_features.append(self.init_conv_for_offset(torch.cat((base_frame, neigbor_frame[:, j, :, :, :], self.size_adjuster(flow[j])), 1)))
             else:
                 offset_features.append(self.init_conv_for_offset(torch.cat((base_frame, neigbor_frame[:, j, :, :, :]), 1)))
 

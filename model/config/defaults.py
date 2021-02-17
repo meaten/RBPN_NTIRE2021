@@ -10,9 +10,9 @@ _C.MODEL.BURST_SIZE = 8
 _C.MODEL.NUM_RESBLOCK = 5
 _C.MODEL.USE_FLOW = False
 # _C.MODEL.INPUT_CHANNEL = 3
-_C.MODEL.PREPROCESS = "Nearest"
+_C.MODEL.PREPROCESS = "Nearest" # 'Nearest' or 'RGGB2channel'
 _C.MODEL.OUTPUT_CHANNEL = 3
-_C.MODEL.TYPE = 'normal'  # 'normal' or 'deform'
+_C.MODEL.TYPE = 'normal' # 'normal' or 'deform'
 
 _C.SOLVER = CN()
 _C.SOLVER.LR = 1e-4
