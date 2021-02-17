@@ -107,7 +107,7 @@ class Net(nn.Module):
         feat_frame=[]
         for j in range(neigbor_frame.shape[1]):
             if self.use_flow:
-                feat_frame.append(self.feat1(torch.cat((base_frame, neigbor_frame[:, j, :, :, :], self.size_adjuster(flow[j])), 1)))
+                feat_frame.append(self.feat1(torch.cat((base_frame, neigbor_frame[:, j, :, :, :], self.size_adjuster(flow[j+1])), 1)))
             else:
                 feat_frame.append(self.feat1(torch.cat((base_frame, neigbor_frame[:, j, :, :, :]), 1)))
         
@@ -128,26 +128,3 @@ class Net(nn.Module):
         output = self.output(out)
 
         return output
-    
-    
-class Nearest(object):
-    def __init__(self):
-        self.up = nn.Upsample(scale_factor=2, mode='nearest')
-
-    def __call__(self, x):
-        batch, frame, channel, width, height = x.shape
-
-        out = torch.empty((batch, frame, 3, width*2, height*2)).to(x.device)
-        
-        out[:, :, 0, :, :] = self.up(x[:, :, 0, :, :])
-        out[:, :, 1, :, :] = ( self.up(x[:, :, 1, :, :]) + self.up(x[:, :, 2, :, :]) )/ 2
-        out[:, :, 2, :, :] = self.up(x[:, :, 3, :, :])
-
-        return out
-    
-class RGGB2channel(object):
-    def __init__(self):
-        pass
-    
-    def __call__(self, x):
-        return x

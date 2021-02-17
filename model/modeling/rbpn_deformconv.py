@@ -103,9 +103,6 @@ class Net(nn.Module):
             
     def forward(self, x, flow=None):
         x = self.preprocess(x)
-        
-        base_frame = x[:, 0, :, :, :]
-        neigbor_frame = x[:, 1:, :, :]
 
         ### initial feature extraction
         input_features = []
@@ -113,18 +110,18 @@ class Net(nn.Module):
             input_features.append(self.init_conv(x[:, j, :, :, :]))
 
         offset_features = []
-        for j in range(neigbor_frame.shape[1]):
+        for j in range(x.shape[1]):
             if self.use_flow:
-                offset_features.append(self.init_conv_for_offset(torch.cat((base_frame, neigbor_frame[:, j, :, :, :], self.size_adjuster(flow[j])), 1)))
+                offset_features.append(self.init_conv_for_offset(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :], self.size_adjuster(flow[j])), 1)))
             else:
-                offset_features.append(self.init_conv_for_offset(torch.cat((base_frame, neigbor_frame[:, j, :, :, :]), 1)))
+                offset_features.append(self.init_conv_for_offset(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :]), 1)))
 
         ### Projection
         Ht = []
-        feat = input_features[0]
-        for j in range(neigbor_frame.shape[1]):
+        feat = self.deform_conv(input_features[0], offset_features[0])
+        for j in range(1, x.shape[1]):
             h0 = self.DBPN(feat)
-            h1 = self.res_feat1(self.deform_conv(input_features[j+1], offset_features[j]))
+            h1 = self.res_feat1(self.deform_conv(input_features[j], offset_features[j]))
 
             e = h0-h1
             e = self.res_feat2(e)
