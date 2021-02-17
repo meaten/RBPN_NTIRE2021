@@ -29,7 +29,7 @@ class ModelWithLoss(nn.Module):
     def forward(self, x, target):
         x = x.to('cuda')
         target = target.to('cuda')
-
+  
         if self.use_flow:
             flow = []
             alined_x = self.preprocess(x)
