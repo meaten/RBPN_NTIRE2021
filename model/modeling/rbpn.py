@@ -4,6 +4,7 @@ from torchvision.transforms import *
 
 from .base_networks import *
 from .dbpns import Net as DBPNS
+from .misc import RGGB2channel, Nearest
 
 class Net(nn.Module):
     def __init__(self, cfg):

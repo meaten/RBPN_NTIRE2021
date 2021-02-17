@@ -1,6 +1,5 @@
+MODEL:
+  BURST_SIZE: 14
+  USE_FLOW: True
 SOLVER:
   BATCH_SIZE: 1
-  LR_STEP: [100, 200]
-  LR: 1e-4
-DATASET:
-  TRACK: 'real'
