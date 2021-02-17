@@ -7,11 +7,18 @@ import numpy
 import PIL.Image
 import sys
 
+<<<<<<< HEAD
 # try:
 from .correlation import correlation # the custom cost volume layer
 # except:
 #     print('fuck')
 #     sys.path.insert(0, './correlation'); import correlation # you should consider upgrading python
+=======
+try:
+    from model.provided_toolkit.pwcnet.correlation import correlation # the custom cost volume layer
+except:
+    sys.path.insert(0, './correlation'); import correlation # you should consider upgrading python
+>>>>>>> 6610b07a13726efae058ac950f67195bb1fbcddc
 
 
 backwarp_tenGrid = {}

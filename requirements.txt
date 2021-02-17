@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 torch==1.4
+=======
+torch==1.4.0
+>>>>>>> 6610b07a13726efae058ac950f67195bb1fbcddc
 torchvision
 yacs
 tqdm
@@ -6,5 +10,9 @@ tensorboard
 opencv-python
 torch_optimizer
 exifread
+<<<<<<< HEAD
 correlation
 cupy
+=======
+cupy>=7.7.0,<8.0.0
+>>>>>>> 6610b07a13726efae058ac950f67195bb1fbcddc
