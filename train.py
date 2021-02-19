@@ -6,17 +6,16 @@ import datetime
 
 import torch
 from torch.utils.data import DataLoader, RandomSampler
-from torch.utils.data.sampler import BatchSampler, SequentialSampler
+from torch.utils.data.sampler import BatchSampler
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import MultiStepLR
-import torch_optimizer as optim
 
 from model.config import cfg
 from model.engine.trainer import do_train
 from model.modeling.build_model import ModelWithLoss
 from model.data.samplers import IterationBasedBatchSampler
 from model.utils.sync_batchnorm import convert_model
-from model.utils.misc import str2bool, fix_model_state_dict
+from model.utils.misc import fix_model_state_dict
 from model.provided_toolkit.datasets.synthetic_burst_train_set import SyntheticBurst
 from model.provided_toolkit.datasets.zurich_raw2rgb_dataset import ZurichRAW2RGB
 from model.provided_toolkit.datasets.burstsr_dataset import BurstSRDataset
@@ -36,6 +35,7 @@ def parse_args() -> None:
 
     return parser.parse_args()
 
+
 def train(args, cfg):
     device = torch.device('cuda')
     model = ModelWithLoss(cfg).to(device)
@@ -45,7 +45,7 @@ def train(args, cfg):
     print('Loading Datasets...')
     data_loader = {}
 
-    # train_transforms = 
+    # train_transforms =
     if cfg.DATASET.TRACK == 'synthetic':
         train_dataset = SyntheticBurst(ZurichRAW2RGB(cfg.DATASET.TRAIN_SYNTHETIC), crop_sz=cfg.SOLVER.PATCH_SIZE, burst_size=cfg.MODEL.BURST_SIZE)
     elif cfg.DATASET.TRACK == 'real':
@@ -58,15 +58,15 @@ def train(args, cfg):
     data_loader['train'] = train_loader
 
     # if args.eval_step != 0:
-    #     val_transforms = 
-    #     val_dataset = 
+    #     val_transforms =
+    #     val_dataset =
     #     sampler = SequentialSampler(val_dataset)
     #     batch_sampler = BatchSampler(sampler=sampler, batch_size=args.batch_size, drop_last=False)
     #     val_loader = DataLoader(val_dataset, num_workers=args.num_workers, batch_sampler=batch_sampler)
 
     #     data_loader['val'] = val_loader
 
-    optimizer = torch.optim.Adam(filter(lambda p:p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
     scheduler = MultiStepLR(optimizer, cfg.SOLVER.LR_STEP, gamma=0.1)
 
     if args.resume_iter != 0:
