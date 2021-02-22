@@ -34,7 +34,7 @@ class ModelWithLoss(nn.Module):
                 flow.append(self.flow_model(alined_x[:, 0, :, :, :], alined_x[:, j, :, :, :]))
             pred = self.model(x, flow=flow)   
         
-        else:             
+        else:
             pred = self.model(x)
 
         loss = self.loss_fn(pred, target)

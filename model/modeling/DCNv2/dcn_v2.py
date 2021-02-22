@@ -135,7 +135,6 @@ class DCN_IDv2(nn.Module):
         super(DCN_IDv2, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.off_channels = off_channels
         self.kernel_size = _pair(kernel_size)
         self.stride = _pair(stride)
         self.padding = _pair(padding)
