@@ -65,10 +65,13 @@ def do_test_synthetic(args, cfg, model, device):
         # Save predictions as png
         name = name = str(idx).zfill(len(str(len(test_dataset))))
         cv2.imwrite(os.path.join(vis_dir, '{}.png'.format(name)), output_image)
-    
+        
     mean_psnr = sum(scores_all) / len(scores_all)
 
-    print('Mean PSNR is {:0.3f}'.format(mean_psnr.item()))
+    with open(os.path.join(vis_dir, 'result_psnr.txt'), 'w') as f:
+        string = 'Mean PSNR is {:0.3f}'.format(mean_psnr.item())
+        print(string)
+        f.write(string)
     
     if args.submit:
         test_dataset = SyntheticBurstVal(cfg.DATASET.VAL_SYNTHETIC)
@@ -124,25 +127,28 @@ def do_test_real(args, cfg, model, device):
         
     mean_psnr = sum(scores_all) / len(scores_all)
 
-    print('Mean PSNR is {:0.3f}'.format(mean_psnr.item()))
+    with open(os.path.join(vis_dir, 'result_psnr.txt'), 'w') as f:
+        string = 'Mean PSNR is {:0.3f}'.format(mean_psnr.item())
+        print(string)
+        f.write(string)
     
     
 def create_output_image(frame_gt, net_pred, psnr):
     max_heatmap = 0.3
     diff = torch.norm(frame_gt - net_pred, dim=0)
-    diff = (diff.clamp(0.0, max_heatmap) / max_heatmap * (2 ** 8)).cpu().numpy().astype(np.uint8)
+    diff = (diff.clamp(0.0, max_heatmap) / max_heatmap * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
     heatmap = cv2.applyColorMap(diff, cv2.COLORMAP_JET)
     
-    net_pred = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8)).cpu().numpy().astype(np.uint8)
-    frame_gt = (frame_gt.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8)).cpu().numpy().astype(np.uint8)
+    net_pred = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
+    frame_gt = (frame_gt.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
     
     alpha = 0.3
-    heatmap_blended = cv2.addWeighted(net_pred, alpha, heatmap, 1 - alpha, 0)
+    heatmap_blended = cv2.addWeighted(frame_gt, alpha, heatmap, 1 - alpha, 0)
     
     output_image = np.concatenate([frame_gt, net_pred, heatmap_blended], axis=1)
-    cv2.putText(output_image, "GT", (10, 30), cv2.FONT_HERSHEY_PLAIN, 1.5, (255, 255, 255), 1)
-    cv2.putText(output_image, f"PSNR: {psnr:.3f}", (10, 60), cv2.FONT_HERSHEY_PLAIN, 1.5, (255, 255, 255), 1)
-    cv2.putText(output_image, "SR", (10 + net_pred.shape[0], 30), cv2.FONT_HERSHEY_PLAIN, 1.5, (255, 255, 255), 1)
+    imtext(output_image, "GT", (10, 30), 1.5, 1, (0, 0, 0), (255, 255, 255))
+    imtext(output_image, f"PSNR: {psnr:.3f}", (10, 60), 1.5, 1, (0, 0, 0), (255, 255, 255))
+    imtext(output_image, "SR", (10 + net_pred.shape[0], 30), 1.5, 1, (0, 0, 0), (255, 255, 255))
     
     return output_image
     
@@ -157,7 +163,7 @@ def pred_ensemble(model, burst, num_frame, device):
     ensemble_burst.to(device)
     
     with torch.no_grad():
-        net_pred = model.model(ensemble_burst)
+        net_pred = model.pred(ensemble_burst)
         net_pred = torch.mean(net_pred, axis=0)
         
     return net_pred
@@ -169,6 +175,15 @@ def get_ensemble_idx(burst_size=14, num_frame=8):
     ensemble_idx[:, 0] = 0
     
     return ensemble_idx
+
+
+def imtext(img, msg, r, size, thickness, col, bgcol):
+    cv2.putText(img, msg, r,
+                cv2.FONT_HERSHEY_PLAIN, size,
+                bgcol, int(4 * thickness), 1)
+    cv2.putText(img, msg, r,
+                cv2.FONT_HERSHEY_PLAIN, size,
+                col, thickness, 1)
 
 
 def main():

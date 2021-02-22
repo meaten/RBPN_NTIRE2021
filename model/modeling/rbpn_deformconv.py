@@ -4,8 +4,9 @@ from torchvision.transforms import *
 
 from .base_networks import *
 from .dbpns import Net as DBPNS
+from .DCNv2.dcn_v2 import DCN_ID
 from .misc import RGGB2channel, Nearest
-from .extractors import *
+
 
 class Net(nn.Module):
     def __init__(self, cfg):
@@ -50,15 +51,15 @@ class Net(nn.Module):
             padding = 2
         
         #Initial Feature Extraction
-        if cfg.MODEL.EXTRACTOR_TYPE == 'normal':
-            self.extractor = NormalExtractor(input_channel, base_filter, use_flow=self.use_flow)
-        elif cfg.MODEL.EXTRACTOR_TYPE == 'deform':
-            self.extractor = DeformableExtractor(input_channel, base_filter, use_flow=self.use_flow)
-        elif cfg.MODEL.EXTRACTOR_TYPE == 'pcd_aligne':
-            self.extractor = PCDAligneExtractor(input_channel, base_filter)
-        else:
-            raise NotImplementedError
+        self.init_conv = ConvBlock(input_channel, base_filter, 3, 1, 1, activation='prelu', norm=None)
 
+        if self.use_flow:
+            self.init_conv_for_offset = ConvBlock(input_channel*2 + 2, base_filter, 3, 1, 1, activation='prelu', norm=None)
+        else:
+            self.init_conv_for_offset = ConvBlock(input_channel*2, base_filter, 3, 1, 1, activation='prelu', norm=None)
+
+
+        self.deform_conv = DCN_ID(base_filter, base_filter, base_filter, kernel_size=3, stride=1, padding=1)
 
         ###DBPNS
         self.DBPN = DBPNS(base_filter, feat, self.scale_factor)
@@ -98,28 +99,39 @@ class Net(nn.Module):
         	    torch.nn.init.kaiming_normal_(m.weight)
         	    if m.bias is not None:
         		    m.bias.data.zero_()
+
                     
             
     def forward(self, x, flow=None):
         x = self.preprocess(x)
-        ### initial feature extraction
-        features = self.extractor(x, flow)
 
-        ####Projection
+        ### initial feature extraction
+        input_features = []
+        for j in range(x.shape[1]):
+            input_features.append(self.init_conv(x[:, j, :, :, :]))
+
+        offset_features = []
+        for j in range(x.shape[1]):
+            if self.use_flow:
+                offset_features.append(self.init_conv_for_offset(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :], self.size_adjuster(flow[j])), 1)))
+            else:
+                offset_features.append(self.init_conv_for_offset(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :]), 1)))
+
+        ### Projection
         Ht = []
-        feat = features[0]
-        for j in range(1, len(features)):
+        feat = self.deform_conv(input_features[0], offset_features[0])
+        for j in range(1, x.shape[1]):
             h0 = self.DBPN(feat)
-            h1 = self.res_feat1(features[j])
-            
+            h1 = self.res_feat1(self.deform_conv(input_features[j], offset_features[j]))
+
             e = h0-h1
             e = self.res_feat2(e)
             h = h0+e
             Ht.append(h)
             feat = self.res_feat3(h)
-        
-        ####Reconstruction
-        out = torch.cat(Ht,1)
+
+        ### Reconstruction
+        out = torch.cat(Ht, 1)
         output = self.output(out)
 
         return output
