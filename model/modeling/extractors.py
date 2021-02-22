@@ -34,7 +34,10 @@ class NormalExtractor(nn.Module):
 
         self.use_flow = use_flow
 
-        self.init_conv = nn.Sequential()
+        self.init_conv = nn.Sequential(
+            ConvBlock(3, base_filter, kernel_size=3, stride=1, padding=1, norm=None, ),
+            PyramidModule(),
+        )
 
 
 class DeformableExtractor(nn.Module):
