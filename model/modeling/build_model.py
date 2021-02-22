@@ -3,7 +3,6 @@ import torch.nn as nn
 
 from model.provided_toolkit.pwcnet.pwcnet import PWCNet
 from .rbpn import Net as RBPN
-from .rbpn_deformconv import Net as Deformable_RBPN
 from .misc import Nearest, RGGB2channel
 
 class ModelWithLoss(nn.Module):
@@ -17,11 +16,8 @@ class ModelWithLoss(nn.Module):
             self.flow_model = PWCNet(load_pretrained=True, weights_path=cfg.PWCNET_WEIGHTS)
             for param in self.flow_model.parameters():
                 param.requires_grad = False
-        
-        if cfg.MODEL.TYPE == 'normal':
-            self.model = RBPN(cfg)
-        elif cfg.MODEL.TYPE == 'deform':
-            self.model = Deformable_RBPN(cfg)
+
+        self.model = RBPN(cfg)
 
         self.loss_fn = nn.L1Loss()
         
