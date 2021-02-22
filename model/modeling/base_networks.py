@@ -462,7 +462,7 @@ class PCDAlignment(nn.Module):
                                                      1, 1)
                 self.offset_conv3[level] = nn.Conv2d(num_feat, num_feat, 3, 1,
                                                      1)
-            self.dcn_pack[level] = DCN_ID(num_feat, num_feat, 3, 1, padding=1, deformable_groups=deformable_groups)
+            self.dcn_pack[level] = DCN_ID(num_feat, num_feat, num_feat, 3, 1, padding=1, deformable_groups=deformable_groups)
 
             if i < 3:
                 self.feat_conv[level] = nn.Conv2d(num_feat * 2, num_feat, 3, 1,
@@ -471,7 +471,7 @@ class PCDAlignment(nn.Module):
         # Cascading dcn
         self.cas_offset_conv1 = nn.Conv2d(num_feat * 2, num_feat, 3, 1, 1)
         self.cas_offset_conv2 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
-        self.cas_dcnpack = DCN_ID(num_feat, num_feat, 3, 1, padding=1, deformable_groups=deformable_groups)
+        self.cas_dcnpack = DCN_ID(num_feat, num_feat, num_feat, 3, 1, padding=1, deformable_groups=deformable_groups)
 
         self.upsample = nn.Upsample(
             scale_factor=2, mode='bilinear', align_corners=False)

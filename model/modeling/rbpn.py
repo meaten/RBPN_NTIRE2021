@@ -50,12 +50,16 @@ class Net(nn.Module):
             padding = 2
         
         #Initial Feature Extraction
-        if cfg.MODEL.EXTRACTOR_TYPE == 'normal':
-            self.extractor = NormalExtractor(input_channel, base_filter, use_flow=self.use_flow)
+        if cfg.MODEL.EXTRACTOR_TYPE == 'original':
+            self.extractor = OriginalExtractor(input_channel, base_filter, use_flow=self.use_flow)
+        elif cfg.MODEL.EXTRACTOR_TYPE == 'deep':
+            self.extractor = DeepExtractor(input_channel, base_filter, use_flow=self.use_flow)
         elif cfg.MODEL.EXTRACTOR_TYPE == 'deform':
             self.extractor = DeformableExtractor(input_channel, base_filter, use_flow=self.use_flow)
-        elif cfg.MODEL.EXTRACTOR_TYPE == 'pcd_aligne':
-            self.extractor = PCDAligneExtractor(input_channel, base_filter)
+        elif cfg.MODEL.EXTRACTOR_TYPE == 'deepdeform':
+            self.extractor = DeepDeformableExtractor(input_channel, base_filter, use_flow=self.use_flow)
+        elif cfg.MODEL.EXTRACTOR_TYPE == 'pcd_align':
+            self.extractor = PCDAlignExtractor(input_channel, base_filter)
         else:
             raise NotImplementedError
 
