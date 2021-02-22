@@ -17,7 +17,7 @@ class Net(nn.Module):
             input_channel = 3
             self.scale_factor = 4
             self.preprocess = Nearest()
-            self.size_adjuster = nn.Upsample(scale_factor=0.5)
+            self.size_adjuster = nn.Upsample(scale_factor=1)
         elif cfg.MODEL.PREPROCESS == "RGGB2channel":
             input_channel = 4
             self.scale_factor = 8

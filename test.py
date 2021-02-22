@@ -136,19 +136,19 @@ def do_test_real(args, cfg, model, device):
 def create_output_image(frame_gt, net_pred, psnr):
     max_heatmap = 0.3
     diff = torch.norm(frame_gt - net_pred, dim=0)
-    diff = (diff.clamp(0.0, max_heatmap) / max_heatmap * (2 ** 8)).cpu().numpy().astype(np.uint8)
+    diff = (diff.clamp(0.0, max_heatmap) / max_heatmap * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
     heatmap = cv2.applyColorMap(diff, cv2.COLORMAP_JET)
     
-    net_pred = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8)).cpu().numpy().astype(np.uint8)
-    frame_gt = (frame_gt.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8)).cpu().numpy().astype(np.uint8)
+    net_pred = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
+    frame_gt = (frame_gt.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
     
     alpha = 0.3
-    heatmap_blended = cv2.addWeighted(net_pred, alpha, heatmap, 1 - alpha, 0)
+    heatmap_blended = cv2.addWeighted(frame_gt, alpha, heatmap, 1 - alpha, 0)
     
     output_image = np.concatenate([frame_gt, net_pred, heatmap_blended], axis=1)
-    cv2.putText(output_image, "GT", (10, 30), cv2.FONT_HERSHEY_PLAIN, 1.5, (255, 255, 255), 1)
-    cv2.putText(output_image, f"PSNR: {psnr:.3f}", (10, 60), cv2.FONT_HERSHEY_PLAIN, 1.5, (255, 255, 255), 1)
-    cv2.putText(output_image, "SR", (10 + net_pred.shape[0], 30), cv2.FONT_HERSHEY_PLAIN, 1.5, (255, 255, 255), 1)
+    imtext(output_image, "GT", (10, 30), 1.5, 1, (0, 0, 0), (255, 255, 255))
+    imtext(output_image, f"PSNR: {psnr:.3f}", (10, 60), 1.5, 1, (0, 0, 0), (255, 255, 255))
+    imtext(output_image, "SR", (10 + net_pred.shape[0], 30), 1.5, 1, (0, 0, 0), (255, 255, 255))
     
     return output_image
     
@@ -175,6 +175,15 @@ def get_ensemble_idx(burst_size=14, num_frame=8):
     ensemble_idx[:, 0] = 0
     
     return ensemble_idx
+
+
+def imtext(img, msg, r, size, thickness, col, bgcol):
+    cv2.putText(img, msg, r,
+                cv2.FONT_HERSHEY_PLAIN, size,
+                bgcol, int(4 * thickness), 1)
+    cv2.putText(img, msg, r,
+                cv2.FONT_HERSHEY_PLAIN, size,
+                col, thickness, 1)
 
 
 def main():
