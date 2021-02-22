@@ -11,30 +11,23 @@ class ModelWithLoss(nn.Module):
     def __init__(self, cfg):
         super(ModelWithLoss, self).__init__()
         self.flow_model = None
+        self.pretrain = False
+        self.pretrain_iter = 0
         
         self.preprocess = Nearest()
 
         self.use_flow = cfg.MODEL.USE_FLOW
         if self.use_flow:
             self.build_flow_model(cfg)
-        
         self.model = RBPN(cfg)
-
-        if cfg.MODEL.LOSS == 'l1':
-            self.loss_fn = L1()
-        elif cfg.MODEL.LOSS == 'alignedl2':
-            if not self.use_flow:
-                self.build_flow_model(cfg)
-            self.loss_fn = AlignedL2(alignment_net=self.flow_model, sr_factor=4, boundary_ignore=40)
-        else:
-            raise ValueError(f"unknown loss function {cfg.MODEL.LOSS}")
+        self.build_loss(cfg)
 
     def forward(self, x, target):
         x = x.to('cuda')
         target = target.to('cuda')
         pred = self.pred(x)
-        loss = self.loss_fn(pred, target, x)
-
+        loss = self.loss(pred, target, x)
+        
         return loss
     
     def pred(self, x):
@@ -56,10 +49,28 @@ class ModelWithLoss(nn.Module):
         for param in self.flow_model.parameters():
             param.requires_grad = False
             
-            
-class L1(object):
-    def __init__(self):
+    def build_loss(self, cfg):
         self.l1 = nn.L1Loss()
+        self.loss_name = cfg.MODEL.LOSS
+        if cfg.MODEL.LOSS == 'l1':
+            pass
+        elif cfg.MODEL.LOSS == 'alignedl2':
+            self.pretrain_iter = cfg.SOLVER.PRETRAIN_ITER
+            self.pretrain = True
+            if not self.use_flow:
+                self.build_flow_model(cfg)
+            self.alignedl2 = AlignedL2(alignment_net=self.flow_model, sr_factor=4, boundary_ignore=40)
+        else:
+            raise ValueError(f"unknown loss function {cfg.MODEL.LOSS}")
+            
+    def loss(self, pred, target, x):
+        if self.loss_name == 'l1' or self.pretrain:
+            return self.l1(pred, target)
+        elif self.loss_name == 'alignedl2' and not self.pretrain:
+            return self.alignedl2(pred, target, x)
+        else:
+            raise ValueError
         
-    def __call__(self, pred, target, burst_input):
-        return self.l1(pred, target)
+    def chg_flag(self, iter):
+        if iter > self.pretrain_iter:
+            self.pretrain = False

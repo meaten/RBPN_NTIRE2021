@@ -1,3 +1,4 @@
+from ast import iter_child_nodes
 import time
 import os
 from tqdm import tqdm
@@ -28,6 +29,8 @@ def do_train(args, cfg, model, optimizer, scheduler, data_loader, device, summar
         scheduler.step()
 
         logging_loss += loss.item()
+        
+        model.chg_flag(iteration)
 
         trained_time += time.time() - end
         end = time.time()
