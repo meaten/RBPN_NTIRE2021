@@ -15,19 +15,19 @@ class Net(nn.Module):
         # input_channel = cfg.MODEL.INPUT_CHANNEL
         if cfg.MODEL.PREPROCESS == "Nearest":
             input_channel = 3
-            scale_factor = 4
+            self.scale_factor = 4
             self.preprocess = Nearest()
             self.size_adjuster = nn.Upsample(scale_factor=0.5)
         elif cfg.MODEL.PREPROCESS == "RGGB2channel":
             input_channel = 4
-            scale_factor = 8
+            self.scale_factor = 8
             self.preprocess = RGGB2channel()
             self.size_adjuster = nn.Upsample(scale_factor=0.5)
         else:
             raise ValueError
         
         output_channel = cfg.MODEL.OUTPUT_CHANNEL
-        # scale_factor = cfg.MODEL.SCALE_FACTOR
+        # self.scale_factor = cfg.MODEL.SCALE_FACTOR
         base_filter = cfg.MODEL.BASE_FILTER
         feat = cfg.MODEL.FEAT
         n_resblock = cfg.MODEL.NUM_RESBLOCK
@@ -35,18 +35,18 @@ class Net(nn.Module):
 
         self.use_flow = cfg.MODEL.USE_FLOW
         
-        if scale_factor == 2:
-        	kernel = 6
-        	stride = 2
-        	padding = 2
-        elif scale_factor == 4:
-        	kernel = 8
-        	stride = 4
-        	padding = 2
-        elif scale_factor == 8:
-        	kernel = 12
-        	stride = 8
-        	padding = 2
+        if self.scale_factor == 2:
+            kernel = 6
+            stride = 2
+            padding = 2
+        elif self.scale_factor == 4:
+            kernel = 8
+            stride = 4
+            padding = 2
+        elif self.scale_factor == 8:
+            kernel = 12
+            stride = 8
+            padding = 2
         
         #Initial Feature Extraction
         self.feat0 = ConvBlock(input_channel, base_filter, 3, 1, 1, activation='prelu', norm=None)
@@ -57,7 +57,7 @@ class Net(nn.Module):
             self.feat1 = ConvBlock(input_channel*2, base_filter, 3, 1, 1, activation='prelu', norm=None)
 
         ###DBPNS
-        self.DBPN = DBPNS(base_filter, feat, scale_factor)
+        self.DBPN = DBPNS(base_filter, feat, self.scale_factor)
                 
         #Res-Block1
         modules_body1 = [
@@ -101,7 +101,7 @@ class Net(nn.Module):
         
         base_frame = x[:, 0, :, :, :]
         neigbor_frame = x[:, 1:, :, :]
-
+        
         ### initial feature extraction
         feat_input = self.feat0(base_frame)
         feat_frame=[]

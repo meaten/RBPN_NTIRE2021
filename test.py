@@ -65,10 +65,13 @@ def do_test_synthetic(args, cfg, model, device):
         # Save predictions as png
         name = name = str(idx).zfill(len(str(len(test_dataset))))
         cv2.imwrite(os.path.join(vis_dir, '{}.png'.format(name)), output_image)
-    
+        
     mean_psnr = sum(scores_all) / len(scores_all)
 
-    print('Mean PSNR is {:0.3f}'.format(mean_psnr.item()))
+    with open(os.path.join(vis_dir, 'result_psnr.txt'), 'w') as f:
+        string = 'Mean PSNR is {:0.3f}'.format(mean_psnr.item())
+        print(string)
+        f.write(string)
     
     if args.submit:
         test_dataset = SyntheticBurstVal(cfg.DATASET.VAL_SYNTHETIC)
@@ -124,7 +127,10 @@ def do_test_real(args, cfg, model, device):
         
     mean_psnr = sum(scores_all) / len(scores_all)
 
-    print('Mean PSNR is {:0.3f}'.format(mean_psnr.item()))
+    with open(os.path.join(vis_dir, 'result_psnr.txt'), 'w') as f:
+        string = 'Mean PSNR is {:0.3f}'.format(mean_psnr.item())
+        print(string)
+        f.write(string)
     
     
 def create_output_image(frame_gt, net_pred, psnr):
@@ -157,7 +163,7 @@ def pred_ensemble(model, burst, num_frame, device):
     ensemble_burst.to(device)
     
     with torch.no_grad():
-        net_pred = model.model(ensemble_burst)
+        net_pred = model.pred(ensemble_burst)
         net_pred = torch.mean(net_pred, axis=0)
         
     return net_pred
