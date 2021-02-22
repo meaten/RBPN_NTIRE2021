@@ -424,7 +424,7 @@ class PCDAlignment(nn.Module):
         deformable_groups (int): Deformable groups. Defaults: 8.
     """
 
-    def __init__(self, num_feat=64, deformable_groups=8):
+    def __init__(self, num_feat=64, deformable_groups=8, activation='prelu'):
         super(PCDAlignment, self).__init__()
 
         # Pyramid has three levels:
@@ -433,13 +433,13 @@ class PCDAlignment(nn.Module):
         # L1: level 1, original spatial size
 
         self.conv_l2 = nn.Sequential(
-            ConvBlock(),
-            ConvBlock(),
+            ConvBlock(num_feat, num_feat, kernel_size=3, stride=2, padding=1, norm=None, activation=activation),
+            ConvBlock(num_feat, num_feat, kernel_size=3, stride=1, padding=1, norm=None, activation=activation),
         )
 
         self.conv_l3 = nn.Sequential(
-            ConvBlock(),
-            ConvBlock(),
+            ConvBlock(num_feat, num_feat, kernel_size=3, stride=2, padding=1, norm=None, activation=activation),
+            ConvBlock(num_feat, num_feat, kernel_size=3, stride=1, padding=1, norm=None, activation=activation),
         )
 
 
@@ -462,12 +462,7 @@ class PCDAlignment(nn.Module):
                                                      1, 1)
                 self.offset_conv3[level] = nn.Conv2d(num_feat, num_feat, 3, 1,
                                                      1)
-            self.dcn_pack[level] = DCN_ID(
-                num_feat,
-                num_feat,
-                3,
-                padding=1,
-                deformable_groups=deformable_groups)
+            self.dcn_pack[level] = DCN_ID(num_feat, num_feat, 3, 1, padding=1, deformable_groups=deformable_groups)
 
             if i < 3:
                 self.feat_conv[level] = nn.Conv2d(num_feat * 2, num_feat, 3, 1,
@@ -476,16 +471,20 @@ class PCDAlignment(nn.Module):
         # Cascading dcn
         self.cas_offset_conv1 = nn.Conv2d(num_feat * 2, num_feat, 3, 1, 1)
         self.cas_offset_conv2 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
-        self.cas_dcnpack = DCN_ID(
-            num_feat,
-            num_feat,
-            3,
-            padding=1,
-            deformable_groups=deformable_groups)
+        self.cas_dcnpack = DCN_ID(num_feat, num_feat, 3, 1, padding=1, deformable_groups=deformable_groups)
 
         self.upsample = nn.Upsample(
             scale_factor=2, mode='bilinear', align_corners=False)
-        self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
+        
+        if activation == 'relu':
+            self.act = nn.ReLU(True)
+        elif activation == 'prelu':
+            self.act = nn.PReLU()
+        elif activation == 'lrelu':
+            self.act = nn.LeakyReLU(negative_slope=0.1, inpcale=True)
+        else:
+            raise NotImplementedError
+
 
     def forward(self, base_feat, neigbor_feat):
         """Align neighboring frame features to the reference frame features.
@@ -514,20 +513,20 @@ class PCDAlignment(nn.Module):
         for i in range(3, 0, -1):
             level = f'l{i}'
             offset = torch.cat([nbr_feat_l[i - 1], ref_feat_l[i - 1]], dim=1)
-            offset = self.lrelu(self.offset_conv1[level](offset))
+            offset = self.act(self.offset_conv1[level](offset))
             if i == 3:
-                offset = self.lrelu(self.offset_conv2[level](offset))
+                offset = self.act(self.offset_conv2[level](offset))
             else:
-                offset = self.lrelu(self.offset_conv2[level](torch.cat(
+                offset = self.act(self.offset_conv2[level](torch.cat(
                     [offset, upsampled_offset], dim=1)))
-                offset = self.lrelu(self.offset_conv3[level](offset))
+                offset = self.act(self.offset_conv3[level](offset))
 
             feat = self.dcn_pack[level](nbr_feat_l[i - 1], offset)
             if i < 3:
                 feat = self.feat_conv[level](
                     torch.cat([feat, upsampled_feat], dim=1))
             if i > 1:
-                feat = self.lrelu(feat)
+                feat = self.act(feat)
 
             if i > 1:  # upsample offset and features
                 # x2: when we upsample the offset, we should also enlarge
@@ -537,9 +536,9 @@ class PCDAlignment(nn.Module):
 
         # Cascading
         offset = torch.cat([feat, ref_feat_l[0]], dim=1)
-        offset = self.lrelu(
-            self.cas_offset_conv2(self.lrelu(self.cas_offset_conv1(offset))))
-        feat = self.lrelu(self.cas_dcnpack(feat, offset))
+        offset = self.act(
+            self.cas_offset_conv2(self.act(self.cas_offset_conv1(offset))))
+        feat = self.act(self.cas_dcnpack(feat, offset))
         return feat
 
 

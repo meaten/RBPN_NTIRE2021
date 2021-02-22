@@ -4,7 +4,7 @@ import torch.nn as nn
 from .base_networks import *
 from .DCNv2.dcn_v2 import DCN_ID
 
-class NormalExtractor(nn.Module):
+class OriginalExtractor(nn.Module):
     def __init__(self, input_channel, base_filter=64, use_flow=False):
         super(NormalExtractor, self).__init__()
 
@@ -26,6 +26,18 @@ class NormalExtractor(nn.Module):
                 features.append(self.feat1(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :]), 1)))
 
         return features
+
+
+class NormalExtractor(nn.Module):
+    def __init__(self, input_channel, base_filter=64, use_flow=False):
+        super(NormalExtractor, self).__init__()
+
+        self.use_flow = use_flow
+
+        self.init_conv = nn.Sequential(
+            ConvBlock(3, base_filter, kernel_size=3, stride=1, padding=1, norm=None, ),
+            PyramidModule(),
+        )
 
 
 class DeformableExtractor(nn.Module):
@@ -69,15 +81,11 @@ class PCDAligneExtractor(nn.Module):
         super(PCDAligneExtractor, self).__init__()
 
         self.init_conv = nn.Sequential(
-            ConvBlock(input_channel, base_filter, kernel_size=3, stride=1, padding=1, activation='prelu', norm=None),
-            ResnetBlock(base_filter, kernel_size=3, stride=1, padding=1, activation='prelu', norm=None),
-            ResnetBlock(base_filter, kernel_size=3, stride=1, padding=1, activation='prelu', norm=None),
-            ResnetBlock(base_filter, kernel_size=3, stride=1, padding=1, activation='prelu', norm=None),
-            ResnetBlock(base_filter, kernel_size=3, stride=1, padding=1, activation='prelu', norm=None),
-            ResnetBlock(base_filter, kernel_size=3, stride=1, padding=1, activation='prelu', norm=None),
+            ConvBlock(input_channel, base_filter, kernel_size=3, stride=1, padding=1, norm=None, activation='prelu'),
+            PyramidModule(base_filter, activation='prelu'),
         )
 
-        self.pdc_aligne_module = PDCAlignment()
+        self.pcd_aligne_module = PCDAlignment(num_feat=base_filter, activation='prelu')
 
 
     def forward(self, x, flow):
@@ -87,6 +95,6 @@ class PCDAligneExtractor(nn.Module):
 
         features = []
         for j in range(x.shape[1]):
-            features.append(self.pdc_aligne_module(input_features[0], input_features[j]))
+            features.append(self.pcd_aligne_module(input_features[0], input_features[j]))
 
         return features
