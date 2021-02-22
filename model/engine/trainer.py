@@ -53,9 +53,9 @@ def do_train(args, cfg, model, optimizer, scheduler, data_loader, device, summar
             os.makedirs(os.path.dirname(optimizer_path), exist_ok=True)
 
             if args.num_gpus > 1:
-                torch.save(model.module.state_dict(), model_path)
+                torch.save(model.model.module.state_dict(), model_path)
             else:
-                torch.save(model.state_dict(), model_path)
+                torch.save(model.model.state_dict(), model_path)
 
             torch.save(optimizer.state_dict(), optimizer_path)
 
