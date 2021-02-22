@@ -3,7 +3,6 @@ import torch.nn as nn
 
 from model.provided_toolkit.pwcnet.pwcnet import PWCNet
 from .rbpn import Net as RBPN
-# from .rbpn_deformconv import Net as Deformable_RBPN
 from .misc import Nearest
 from model.provided_toolkit.utils.metrics import AlignedL2
 
