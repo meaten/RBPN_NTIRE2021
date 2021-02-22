@@ -19,10 +19,7 @@ class ModelWithLoss(nn.Module):
         if self.use_flow:
             self.build_flow_model(cfg)
         
-        if cfg.MODEL.TYPE == 'normal':
-            self.model = RBPN(cfg)
-        elif cfg.MODEL.TYPE == 'deform':
-            self.model = Deformable_RBPN(cfg)
+        self.model = RBPN(cfg)
 
         if cfg.MODEL.LOSS == 'l1':
             self.loss_fn = L1()

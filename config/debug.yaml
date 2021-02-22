@@ -1,3 +1,5 @@
 MODEL:
-  USE_FLOW: True
   PREPROCESS: 'RGGB2channel'
+  EXTRACTOR_TYPE: 'normal'
+SOLVER:
+  BATCH_SIZE: 1

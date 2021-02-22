@@ -130,7 +130,7 @@ class DCN(DCNv2):
 
 class DCN_IDv2(nn.Module):
 
-    def __init__(self, in_channels, out_channels, off_channels,
+    def __init__(self, in_channels, out_channels,
                  kernel_size, stride, padding, dilation=1, deformable_groups=1):
         super(DCN_IDv2, self).__init__()
         self.in_channels = in_channels
@@ -170,14 +170,14 @@ class DCN_IDv2(nn.Module):
 
 class DCN_ID(DCN_IDv2):
 
-    def __init__(self, in_channels, out_channels, off_channels,
+    def __init__(self, in_channels, out_channels,
                  kernel_size, stride, padding,
                  dilation=1, deformable_groups=1):
-        super(DCN_ID, self).__init__(in_channels, out_channels, off_channels,
+        super(DCN_ID, self).__init__(in_channels, out_channels,
                                   kernel_size, stride, padding, dilation, deformable_groups)
 
         channels_ = self.deformable_groups * 3 * self.kernel_size[0] * self.kernel_size[1]
-        self.conv_offset_mask = nn.Conv2d(self.off_channels,
+        self.conv_offset_mask = nn.Conv2d(self.in_channels,
                                           channels_,
                                           kernel_size=self.kernel_size,
                                           stride=self.stride,

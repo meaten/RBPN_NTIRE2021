@@ -5,6 +5,7 @@ from torchvision.transforms import *
 from .base_networks import *
 from .dbpns import Net as DBPNS
 from .misc import RGGB2channel, Nearest
+from .extractors import *
 
 class Net(nn.Module):
     def __init__(self, cfg):
@@ -49,12 +50,13 @@ class Net(nn.Module):
             padding = 2
         
         #Initial Feature Extraction
-        self.feat0 = ConvBlock(input_channel, base_filter, 3, 1, 1, activation='prelu', norm=None)
+        if cfg.MODEL.EXTRACTOR_TYPE == 'normal':
+            self.extractor = NormalExtractor(input_channel, base_filter, use_flow=self.use_flow)
+        elif cfg.MODEL.EXTRACTOR_TYPE == 'deform':
+            self.extractor = DeformableExtractor(input_channel, base_filter, use_flow=self.use_flow)
+        elif cfg.MODEL.EXTRACTOR_TYPE == 'pdc_aligne':
+            self.extractor = PCDAligneExtractor(input_channel, base_filter)
 
-        if self.use_flow:
-            self.feat1 = ConvBlock(input_channel*2 + 2, base_filter, 3, 1, 1, activation='prelu', norm=None)
-        else:
-            self.feat1 = ConvBlock(input_channel*2, base_filter, 3, 1, 1, activation='prelu', norm=None)
 
         ###DBPNS
         self.DBPN = DBPNS(base_filter, feat, self.scale_factor)
@@ -98,33 +100,24 @@ class Net(nn.Module):
             
     def forward(self, x, flow=None):
         x = self.preprocess(x)
-        
-        base_frame = x[:, 0, :, :, :]
-        neigbor_frame = x[:, 1:, :, :]
-        
         ### initial feature extraction
-        feat_input = self.feat0(base_frame)
-        feat_frame=[]
-        for j in range(neigbor_frame.shape[1]):
-            if self.use_flow:
-                feat_frame.append(self.feat1(torch.cat((base_frame, neigbor_frame[:, j, :, :, :], self.size_adjuster(flow[j+1])), 1)))
-            else:
-                feat_frame.append(self.feat1(torch.cat((base_frame, neigbor_frame[:, j, :, :, :]), 1)))
-        
+        features = self.extractor(x, flow)
+
         ####Projection
         Ht = []
-        for j in range(neigbor_frame.shape[1]):
-            h0 = self.DBPN(feat_input)
-            h1 = self.res_feat1(feat_frame[j])
+        feat = features[0]
+        for j in range(1, len(features)):
+            h0 = self.DBPN(feat)
+            h1 = self.res_feat1(features[j])
             
             e = h0-h1
             e = self.res_feat2(e)
             h = h0+e
             Ht.append(h)
-            feat_input = self.res_feat3(h)
+            feat = self.res_feat3(h)
         
         ####Reconstruction
-        out = torch.cat(Ht,1)        
+        out = torch.cat(Ht,1)
         output = self.output(out)
 
         return output
