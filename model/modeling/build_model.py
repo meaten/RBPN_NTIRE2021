@@ -27,7 +27,6 @@ class ModelWithLoss(nn.Module):
         target = target.to('cuda')
         pred = self.pred(x)
         loss = self.loss(pred, target, x)
-        
         return loss
     
     def pred(self, x):
@@ -41,7 +40,7 @@ class ModelWithLoss(nn.Module):
         
         else:
             pred = self.model(x)
-            
+        
         return pred
     
     def build_flow_model(self, cfg):
@@ -59,7 +58,7 @@ class ModelWithLoss(nn.Module):
             self.pretrain = True
             if not self.use_flow:
                 self.build_flow_model(cfg)
-            self.alignedl2 = AlignedL2(alignment_net=self.flow_model, sr_factor=4, boundary_ignore=40)
+            self.alignedl2 = AlignedL2(alignment_net=self.flow_model, sr_factor=4, boundary_ignore=10)
         else:
             raise ValueError(f"unknown loss function {cfg.MODEL.LOSS}")
             
