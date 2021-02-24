@@ -34,7 +34,7 @@ class ModelWithLoss(nn.Module):
         if self.use_flow:
             alined_x = self.preprocess(x)
             batch, burst, channel, height, width = alined_x.shape
-            flow = [torch.zeros(batch, 1, 2, height, width).to('cuda')]
+            flow = [torch.zeros(batch, 2, height, width).to('cuda')]
             for j in range(1, alined_x.shape[1]):
                 flow.append(self.flow_model(alined_x[:, 0, :, :, :], alined_x[:, j, :, :, :]))
             pred = self.model(x, flow=flow)
