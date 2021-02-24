@@ -30,8 +30,6 @@ _C.DATASET.TRAIN_SYNTHETIC = 'dataset/Zurich'
 _C.DATASET.VAL_SYNTHETIC = 'dataset/syn_burst_val'
 _C.DATASET.REAL = 'dataset/burstsr_dataset'
 
-_C.PWCNET_WEIGHT = 'model/provided_toolkit/pwcnet/pwcnet-network-default.pth'
-
 _C.PWCNET_WEIGHTS = 'weights/pwcnet-network-default.pth'
 
 _C.OUTPUT_DIR = ''
