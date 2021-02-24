@@ -1,8 +1,8 @@
-from ast import iter_child_nodes
-import time
 import os
-from tqdm import tqdm
+import time
 import datetime
+from tqdm import tqdm
+from ast import iter_child_nodes
 
 import torch
 
@@ -30,14 +30,18 @@ def do_train(args, cfg, model, optimizer, scheduler, data_loader, device, summar
 
         logging_loss += loss.item()
         
-        model.chg_flag(iteration)
-
+        if args.num_gpus > 1:
+            model.module.chg_flag(iteration)
+        else:
+            model.chg_flag(iteration)
+            
         trained_time += time.time() - end
         end = time.time()
 
         if iteration % args.log_step == 0:
             eta_seconds = int((trained_time / iteration) * (max_iter - iteration))
             logging_loss /= args.log_step
+            
             print('===> Iter: {:07d}, LR: {:.06f}, Cost: {:2f}s, Eta: {}, Loss: {:.6f}'.format(iteration, optimizer.param_groups[0]['lr'], time.time() - tic, str(datetime.timedelta(seconds=eta_seconds)), logging_loss))
 
             if summary_writer:

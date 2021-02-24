@@ -31,7 +31,7 @@ def test(args, cfg):
     model = ModelWithLoss(cfg).to(device)
     
     # model.load_state_dict(fix_model_state_dict(torch.load(args.trained_model)))
-    model.load_state_dict(torch.load(args.trained_model))
+    model.model.load_state_dict(torch.load(args.trained_model))
     model.cuda()
 
     print('Loading Datasets...')
