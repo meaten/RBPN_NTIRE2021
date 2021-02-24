@@ -5,6 +5,7 @@ from model.provided_toolkit.pwcnet.pwcnet import PWCNet
 from .rbpn import Net as RBPN
 from .misc import Nearest
 from model.provided_toolkit.utils.metrics import AlignedL2
+from model.engine.loss_functions import PITLoss
 
 
 class ModelWithLoss(nn.Module):
@@ -59,6 +60,8 @@ class ModelWithLoss(nn.Module):
             if not self.use_flow:
                 self.build_flow_model(cfg)
             self.alignedl2 = AlignedL2(alignment_net=self.flow_model, sr_factor=4, boundary_ignore=10)
+        elif cfg.MODEL.LOSS == 'pit':
+            self.pit = PITLoss(cfg)
         else:
             raise ValueError(f"unknown loss function {cfg.MODEL.LOSS}")
             
@@ -67,6 +70,8 @@ class ModelWithLoss(nn.Module):
             return self.l1(pred, target)
         elif self.loss_name == 'alignedl2' and not self.pretrain:
             return self.alignedl2(pred, target, x)
+        elif self.loss_name == 'pit':
+            return self.pit(pred, target)
         else:
             raise ValueError
         
