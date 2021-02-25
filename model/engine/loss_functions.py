@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 from torchvision.models import vgg16
+from torchvision.transforms import Normalize
+
+# from model.utils.misc import 
 
 
 ### Loss function proposed in iSeeBetter
@@ -27,9 +30,8 @@ class PITLoss(nn.Module):
 
 
 class TVLoss(nn.Module):
-    def __init__(self, tv_loss_weight=1):
+    def __init__(self):
         super(TVLoss, self).__init__()
-        self.tv_loss_weight = tv_loss_weight
 
     def forward(self, x):
         batch_size = x.size()[0]
@@ -39,7 +41,7 @@ class TVLoss(nn.Module):
         count_w = self.tensor_size(x[:, :, :, 1:])
         h_tv = torch.pow((x[:, :, 1:, :] - x[:, :, :h_x - 1, :]), 2).sum()
         w_tv = torch.pow((x[:, :, :, 1:] - x[:, :, :, :w_x - 1]), 2).sum()
-        return self.tv_loss_weight * 2 * (h_tv / count_h + w_tv / count_w) / batch_size
+        return 2 * (h_tv / count_h + w_tv / count_w) / batch_size
 
     @staticmethod
     def tensor_size(t):
@@ -49,6 +51,9 @@ class TVLoss(nn.Module):
 class VGGLoss(nn.Module):
     def __init__(self):
         super(VGGLoss, self).__init__()
+
+        self.mean = torch.tensor([0.485, 0.456, 0.406])
+        self.std = torch.tensor([0.229, 0.224, 0.225])
         
         self.vgg = nn.Sequential(*list(vgg16(pretrained=True).features[:31])).eval()
         for param in self.vgg.parameters():
@@ -57,4 +62,17 @@ class VGGLoss(nn.Module):
         self.mse = nn.MSELoss()
 
     def forward(self, x, y):
-        return self.mse(self.vgg(x), self.vgg(y))
+        return self.mse(self.vgg(self._normalize(x)), self.vgg(self._normalize(y)))
+
+    def _normalize(self, x):
+        batch, channel, height, width = x.shape
+
+        mean = self.mean
+        mean = mean.unsqueeze(0).unsqueeze(2).unsqueeze(3)
+        mean = mean.expand(batch, -1, height, width).to(x.device)
+
+        std = self.std
+        std = std.unsqueeze(0).unsqueeze(2).unsqueeze(3)
+        std = std.expand(batch, -1, height, width).to(x.device)
+
+        return (x - mean) / std
