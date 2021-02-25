@@ -55,9 +55,11 @@ def do_train(args, cfg, model, optimizer, scheduler, data_loader, device, summar
         if iteration % args.save_step == 0 and not args.debug:
             model_path = os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(iteration))
             optimizer_path = os.path.join(cfg.OUTPUT_DIR, 'optimizer', 'iteration_{}.pth'.format(iteration))
+            scheduler_path = os.path.join(cfg.OUTPUT_DIR, 'scheduler', 'iteration_{}.pth'.format(iteration))
 
             os.makedirs(os.path.dirname(model_path), exist_ok=True)
             os.makedirs(os.path.dirname(optimizer_path), exist_ok=True)
+            os.makedirs(os.path.dirname(scheduler_path), exist_ok=True)
 
             if args.num_gpus > 1:
                 torch.save(model.module.model.state_dict(), model_path)
@@ -65,6 +67,7 @@ def do_train(args, cfg, model, optimizer, scheduler, data_loader, device, summar
                 torch.save(model.model.state_dict(), model_path)
 
             torch.save(optimizer.state_dict(), optimizer_path)
+            torch.save(scheduler.state_dict(), scheduler_path)
 
             print('=====> Save Checkpoint to {}'.format(model_path))
 
