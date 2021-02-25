@@ -70,8 +70,8 @@ def train(args, cfg):
 
     optimizer = RAdam(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
     # optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
-    # scheduler = MultiStepLR(optimizer, cfg.SOLVER.LR_STEP, gamma=0.1)
-    scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.LR, cfg.SOLVER.LR_STEP, warmup_factor=cfg.SOLVER.WARMUP_FACTOR, warmup_iters=cfg.SOLVER.WARMUP_ITER)
+    scheduler = MultiStepLR(optimizer, cfg.SOLVER.LR_STEP, gamma=0.1)
+    # scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.LR, cfg.SOLVER.LR_STEP, warmup_factor=cfg.SOLVER.WARMUP_FACTOR, warmup_iters=cfg.SOLVER.WARMUP_ITER)
 
     if args.resume_iter != 0:
         print('Resume from {}'.format(os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(args.resume_iter))))
