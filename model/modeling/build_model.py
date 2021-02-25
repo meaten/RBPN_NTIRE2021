@@ -50,7 +50,7 @@ class ModelWithLoss(nn.Module):
             param.requires_grad = False
             
     def build_loss(self, cfg):
-        self.l1 = nn.L1Loss()
+        self.l1 = nn.MSELoss()
         self.loss_name = cfg.MODEL.LOSS
         if cfg.MODEL.LOSS == 'l1':
             pass
