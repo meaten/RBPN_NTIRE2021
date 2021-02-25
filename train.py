@@ -19,6 +19,7 @@ from model.utils.misc import fix_model_state_dict
 from model.provided_toolkit.datasets.synthetic_burst_train_set import SyntheticBurst
 from model.provided_toolkit.datasets.zurich_raw2rgb_dataset import ZurichRAW2RGB
 from model.provided_toolkit.datasets.burstsr_dataset import BurstSRDataset
+from model.utils.lr_scheduler import WarmupMultiStepLR
 
 
 def parse_args() -> None:
@@ -67,12 +68,14 @@ def train(args, cfg):
     #     data_loader['val'] = val_loader
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
-    scheduler = MultiStepLR(optimizer, cfg.SOLVER.LR_STEP, gamma=0.1)
+    # scheduler = MultiStepLR(optimizer, cfg.SOLVER.LR_STEP, gamma=0.1)
+    scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.LR, cfg.SOLVER.LR_STEP, warmup_factor=cfg.SOLVER.WARMUP_FACTOR, warmup_iters=cfg.SOLVER.WARMUP_ITER)
 
     if args.resume_iter != 0:
         print('Resume from {}'.format(os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(args.resume_iter))))
         model.model.load_state_dict(fix_model_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(args.resume_iter)))))
         optimizer.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'optimizer', 'iteration_{}.pth'.format(args.resume_iter))))
+        scheduler.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'scheduler', 'iteration_{}.pth'.format(args.resume_iter))))
 
     if cfg.SOLVER.SYNC_BATCHNORM:
         model = convert_model(model).to(device)
