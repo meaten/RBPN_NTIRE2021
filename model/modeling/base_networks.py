@@ -44,6 +44,9 @@ class ConvBlock(torch.nn.Module):
     def __init__(self, input_size, output_size, kernel_size=3, stride=1, padding=1, bias=True, activation='prelu', norm=None):
         super(ConvBlock, self).__init__()
         self.conv = torch.nn.Conv2d(input_size, output_size, kernel_size, stride, padding, bias=bias)
+        torch.nn.init.kaiming_normal_(self.conv.weight)
+        if bias:
+            self.conv.bias.data.zero_()
 
         self.norm = norm
         if self.norm =='batch':
@@ -79,6 +82,9 @@ class DeconvBlock(torch.nn.Module):
     def __init__(self, input_size, output_size, kernel_size=4, stride=2, padding=1, bias=True, activation='prelu', norm=None):
         super(DeconvBlock, self).__init__()
         self.deconv = torch.nn.ConvTranspose2d(input_size, output_size, kernel_size, stride, padding, bias=bias)
+        torch.nn.init.kaiming_normal_(self.deconv.weight)
+        if bias:
+            self.deconv.bias.data.zero_()
 
         self.norm = norm
         if self.norm == 'batch':
@@ -111,10 +117,24 @@ class DeconvBlock(torch.nn.Module):
 
 
 class ResnetBlock(torch.nn.Module):
-    def __init__(self, num_filter, kernel_size=3, stride=1, padding=1, bias=True, activation='prelu', norm='batch'):
+    def __init__(self, num_filter, kernel_size=3, stride=1, padding=1, bias=True, activation='prelu', norm='batch', num_residual=1):
         super(ResnetBlock, self).__init__()
-        self.conv1 = torch.nn.Conv2d(num_filter, num_filter, kernel_size, stride, padding, bias=bias)
-        self.conv2 = torch.nn.Conv2d(num_filter, num_filter, kernel_size, stride, padding, bias=bias)
+        self.conv1 = torch.nn.Conv2d(num_filter, num_filter, kernel_size, stride, padding, bias=False)
+        self.conv2 = torch.nn.Conv2d(num_filter, num_filter, kernel_size, stride, padding, bias=False)
+
+        torch.nn.init.kaiming_normal_(self.conv1.weight)
+        for param in self.conv1.parameters():
+            param = param / ( num_residual ** (1 / 2) )
+        self.conv2.weight.data.zero_()
+
+        if bias:
+            self.conv1_bias = nn.Parameter(torch.zeros(1))
+            self.conv2_bias = nn.Parameter(torch.zeros(1))
+            self.act1_bias = nn.Parameter(torch.zeros(1))
+            self.act2_bias = nn.Parameter(torch.zeros(1))
+
+        self.multiplier = nn.Parameter(torch.ones(1))
+
 
         self.norm = norm
         if self.norm == 'batch':
@@ -140,20 +160,22 @@ class ResnetBlock(torch.nn.Module):
         if self.norm is not None:
             out = self.bn(self.conv1(x))
         else:
-            out = self.conv1(x)
+            out = self.conv1(x + self.conv1_bias)
 
         if self.activation is not None:
-            out = self.act(out)
+            out = self.act(out + self.act1_bias)
 
         if self.norm is not None:
             out = self.bn(self.conv2(out))
         else:
-            out = self.conv2(out)
+            out = self.conv2(out + self.conv2_bias)
+
+        out = out * self.multiplier
 
         out = torch.add(out, residual)
         
         if self.activation is not None:
-            out = self.act(out)
+            out = self.act(out + self.act2_bias)
             
         return out
 

@@ -94,16 +94,16 @@ class Net(nn.Module):
         self.output = ConvBlock((burst_size-1)*feat, output_channel, 3, 1, 1, activation=None, norm=None)
 
 
-        for m in self.modules():
-            classname = m.__class__.__name__
-            if classname.find('Conv2d') != -1:
-        	    torch.nn.init.kaiming_normal_(m.weight)
-        	    if m.bias is not None:
-        		    m.bias.data.zero_()
-            elif classname.find('ConvTranspose2d') != -1:
-        	    torch.nn.init.kaiming_normal_(m.weight)
-        	    if m.bias is not None:
-        		    m.bias.data.zero_()
+        # for m in self.modules():
+        #     classname = m.__class__.__name__
+        #     if classname.find('Conv2d') != -1:
+        # 	    torch.nn.init.kaiming_normal_(m.weight)
+        # 	    if m.bias is not None:
+        # 		    m.bias.data.zero_()
+        #     elif classname.find('ConvTranspose2d') != -1:
+        # 	    torch.nn.init.kaiming_normal_(m.weight)
+        # 	    if m.bias is not None:
+        # 		    m.bias.data.zero_()
                     
             
     def forward(self, x, flow=None):
