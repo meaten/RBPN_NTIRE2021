@@ -52,6 +52,8 @@ class Net(nn.Module):
         #Initial Feature Extraction
         if cfg.MODEL.EXTRACTOR_TYPE == 'original':
             self.extractor = OriginalExtractor(input_channel, base_filter, use_flow=self.use_flow)
+        elif cfg.MODEL.EXTRACTOR_TYPE == 'normal':
+            self.extractor = NormalExtractor(input_channel, base_filter, use_flow=self.use_flow)
         elif cfg.MODEL.EXTRACTOR_TYPE == 'deep':
             self.extractor = DeepExtractor(input_channel, base_filter, use_flow=self.use_flow)
         elif cfg.MODEL.EXTRACTOR_TYPE == 'deform':

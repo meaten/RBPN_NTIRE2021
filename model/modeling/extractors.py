@@ -17,7 +17,7 @@ class OriginalExtractor(nn.Module):
         else:
             self.feat1 = ConvBlock(input_channel*2, base_filter, 3, 1, 1, activation='prelu', norm=None)
 
-        self.size_adjuster = nn.Upsample(factor=0.5)
+        self.size_adjuster = nn.Upsample(scale_factor=0.5)
         
     def forward(self, x, flow=None):
         features = [self.feat0(x[:, 0, :, :, :])]
@@ -26,6 +26,39 @@ class OriginalExtractor(nn.Module):
                 features.append(self.feat1(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :], self.size_adjuster[j]), 1)))
             else:
                 features.append(self.feat1(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :]), 1)))
+
+        return features
+
+
+class NormalExtractor(nn.Module):
+    def __init__(self, input_channel, base_filter, use_flow=False):
+        super(NormalExtractor, self).__init__()
+
+        self.use_flow = use_flow
+
+        self.init_conv = nn.Sequential(
+            ConvBlock(input_channel, base_filter, kernel_size=3, stride=1, padding=1, norm=None, activation='prelu'),
+        )
+
+        if self.use_flow:
+            self.merge_conv = ConvBlock(base_filter*2 + 2, base_filter, kernel_size=3, stride=1, padding=1, norm=None, activation='prelu')
+            self.size_adjuster = nn.Upsample(scale_factor=0.5)
+
+        else:
+            self.merge_conv = ConvBlock(base_filter*2, base_filter, kernel_size=3, stride=1, padding=1, norm=None, activation='prelu')
+
+
+    def forward(self, x, flow=None):
+        input_features = []
+        for j in range(x.shape[1]):
+            input_features.append(self.init_conv(x[:, j, :, :, :]))
+        
+        features = []
+        for j in range(x.shape[1]):
+            if self.use_flow:
+                features.append(self.merge_conv(torch.cat((input_features[0], input_features[j], self.size_adjuster(flow[j])), 1)))
+            else:
+                features.append(self.merge_conv(torch.cat((input_features[0], input_features[j]), 1)))
 
         return features
 
