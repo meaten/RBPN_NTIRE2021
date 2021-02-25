@@ -14,6 +14,7 @@ _C.MODEL.PREPROCESS = "Nearest"  # 'Nearest' or 'RGGB2channel'
 _C.MODEL.OUTPUT_CHANNEL = 3
 _C.MODEL.EXTRACTOR_TYPE = 'normal'  # 'original', 'deep', 'deform', 'deepdeform', 'pcd_align'
 _C.MODEL.LOSS = 'l1'  # 'l1', 'pit' or 'alignedl2'
+_C.MODEL.NUM_RESIDUAL = 20
 
 _C.SOLVER = CN()
 _C.SOLVER.LR = 1e-4

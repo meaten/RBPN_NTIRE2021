@@ -117,7 +117,7 @@ class DeconvBlock(torch.nn.Module):
 
 
 class ResnetBlock(torch.nn.Module):
-    def __init__(self, num_filter, kernel_size=3, stride=1, padding=1, bias=True, activation='prelu', norm='batch', num_residual=1):
+    def __init__(self, num_filter, kernel_size=3, stride=1, padding=1, bias=True, activation='prelu', norm='batch', num_residual=20):
         super(ResnetBlock, self).__init__()
         self.conv1 = torch.nn.Conv2d(num_filter, num_filter, kernel_size, stride, padding, bias=False)
         self.conv2 = torch.nn.Conv2d(num_filter, num_filter, kernel_size, stride, padding, bias=False)
