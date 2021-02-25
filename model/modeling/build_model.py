@@ -33,10 +33,10 @@ class ModelWithLoss(nn.Module):
     def pred(self, x):
         if self.use_flow:
             aligned_x = self.preprocess(x)
-            batch, burst, channel, height, width = alined_x.shape
+            batch, burst, channel, height, width = aligned_x.shape
             flow = [torch.zeros(batch, 2, height, width).to('cuda')]
             for j in range(1, aligned_x.shape[1]):
-                flow.append(self.flow_model(alined_x[:, 0, :, :, :], alined_x[:, j, :, :, :]))
+                flow.append(self.flow_model(aligned_x[:, 0, :, :, :], aligned_x[:, j, :, :, :]))
             pred = self.model(x, flow=flow)
         
         else:
