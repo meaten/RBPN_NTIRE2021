@@ -21,6 +21,8 @@ from model.provided_toolkit.datasets.synthetic_burst_train_set import SyntheticB
 from model.provided_toolkit.datasets.zurich_raw2rgb_dataset import ZurichRAW2RGB
 from model.provided_toolkit.datasets.burstsr_dataset import BurstSRDataset
 from model.utils.lr_scheduler import WarmupMultiStepLR
+from model.data.transforms.data_preprocess import SyntheticTransforms
+from torchvision.transforms import ToTensor
 
 
 def parse_args() -> None:
@@ -47,9 +49,13 @@ def train(args, cfg):
     print('Loading Datasets...')
     data_loader = {}
 
-    # train_transforms =
+    if cfg.SOLVER.AUGMENTATION:
+        train_transforms = SyntheticTransforms()
+    else:
+        train_transforms = ToTensor()
+        
     if cfg.DATASET.TRACK == 'synthetic':
-        train_dataset = SyntheticBurst(ZurichRAW2RGB(cfg.DATASET.TRAIN_SYNTHETIC), crop_sz=cfg.SOLVER.PATCH_SIZE, burst_size=cfg.MODEL.BURST_SIZE)
+        train_dataset = SyntheticBurst(ZurichRAW2RGB(cfg.DATASET.TRAIN_SYNTHETIC), crop_sz=cfg.SOLVER.PATCH_SIZE, burst_size=cfg.MODEL.BURST_SIZE, transform=train_transforms)
     elif cfg.DATASET.TRACK == 'real':
         train_dataset = BurstSRDataset(cfg.DATASET.REAL, split='train', crop_sz=cfg.SOLVER.PATCH_SIZE // 8, burst_size=cfg.MODEL.BURST_SIZE)
     sampler = RandomSampler(train_dataset)
