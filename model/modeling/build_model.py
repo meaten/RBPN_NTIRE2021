@@ -12,8 +12,6 @@ class ModelWithLoss(nn.Module):
     def __init__(self, cfg):
         super(ModelWithLoss, self).__init__()
         self.flow_model = None
-        self.pretrain = False
-        self.pretrain_iter = 0
         
         self.preprocess = Nearest()
 
@@ -50,13 +48,10 @@ class ModelWithLoss(nn.Module):
             param.requires_grad = False
             
     def build_loss(self, cfg):
-        self.l1 = nn.L1Loss()
         self.loss_name = cfg.MODEL.LOSS
         if cfg.MODEL.LOSS == 'l1':
-            pass
+            self.l1 = nn.L1Loss()
         elif cfg.MODEL.LOSS == 'alignedl2':
-            self.pretrain_iter = cfg.SOLVER.PRETRAIN_ITER
-            self.pretrain = True
             if not self.use_flow:
                 self.build_flow_model(cfg)
             self.alignedl2 = AlignedL2(alignment_net=self.flow_model, sr_factor=4, boundary_ignore=10)
@@ -66,15 +61,11 @@ class ModelWithLoss(nn.Module):
             raise ValueError(f"unknown loss function {cfg.MODEL.LOSS}")
             
     def loss(self, pred, target, x):
-        if self.loss_name == 'l1' or self.pretrain:
+        if self.loss_name == 'l1':
             return self.l1(pred, target)
-        elif self.loss_name == 'alignedl2' and not self.pretrain:
+        elif self.loss_name == 'alignedl2':
             return self.alignedl2(pred, target, x)
         elif self.loss_name == 'pit':
             return self.pit(pred, target)
         else:
             raise ValueError
-        
-    def chg_flag(self, iter):
-        if iter > self.pretrain_iter:
-            self.pretrain = False

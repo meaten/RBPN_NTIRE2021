@@ -33,7 +33,7 @@ def parse_args() -> None:
     parser.add_argument('--num_gpus', type=int, default=1, help='')
     parser.add_argument('--num_workers', type=int, default=16, help='')
     parser.add_argument('--resume_iter', type=int, default=0, help='')
-
+    parser.add_argument('--trained_model', type=str, default='')
     return parser.parse_args()
 
 
@@ -76,7 +76,10 @@ def train(args, cfg):
         model.model.load_state_dict(fix_model_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(args.resume_iter)))))
         optimizer.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'optimizer', 'iteration_{}.pth'.format(args.resume_iter))))
         scheduler.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'scheduler', 'iteration_{}.pth'.format(args.resume_iter))))
-
+    elif cfg.SOLVER.PRETRAIN_MODEL != '':
+        print(f'Resume from {cfg.SOLVER.PRETRAIN_MODEL}')
+        model.model.load_state_dict(fix_model_state_dict(torch.load(cfg.SOLVER.PRETRAIN_MODEL)))
+        
     if cfg.SOLVER.SYNC_BATCHNORM:
         model = convert_model(model).to(device)
     

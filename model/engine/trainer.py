@@ -29,11 +29,6 @@ def do_train(args, cfg, model, optimizer, scheduler, data_loader, device, summar
         scheduler.step()
 
         logging_loss += loss.item()
-        
-        if args.num_gpus > 1:
-            model.module.chg_flag(iteration)
-        else:
-            model.chg_flag(iteration)
             
         trained_time += time.time() - end
         end = time.time()
