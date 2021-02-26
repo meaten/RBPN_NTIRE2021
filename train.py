@@ -68,10 +68,13 @@ def train(args, cfg):
 
     #     data_loader['val'] = val_loader
 
-    optimizer = RAdam(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
+    if cfg.SOLVER.OPTIMIZER == 'radam':
+        optimizer = RAdam(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
+    elif cfg.SOLVER.OPTIMIZER == 'adabound':
+        optimizer = AdaBound(filter(lambda p:p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR, final_lr=cfg.SOLVER.FINAL_LR)
     # optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
-    scheduler = MultiStepLR(optimizer, cfg.SOLVER.LR_STEP, gamma=0.1)
-    # scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.LR, cfg.SOLVER.LR_STEP, warmup_factor=cfg.SOLVER.WARMUP_FACTOR, warmup_iters=cfg.SOLVER.WARMUP_ITER)
+    # scheduler = MultiStepLR(optimizer, cfg.SOLVER.LR_STEP, gamma=0.1)
+    scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.LR, cfg.SOLVER.LR_STEP, warmup_factor=cfg.SOLVER.WARMUP_FACTOR, warmup_iters=cfg.SOLVER.WARMUP_ITER)
 
     if args.resume_iter != 0:
         print('Resume from {}'.format(os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(args.resume_iter))))
