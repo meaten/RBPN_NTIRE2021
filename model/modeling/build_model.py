@@ -22,11 +22,17 @@ class ModelWithLoss(nn.Module):
         self.model = RBPN(cfg)
         self.build_loss(cfg)
 
-    def forward(self, x, target):
-        x = x.to('cuda')
-        target = target.to('cuda')
-        pred = self.pred(x)
-        loss = self.loss(pred, target, x)
+    def forward(self, data_dict):
+        burst = data_dict['burst']
+        gt_frame = data_dict['gt_frame']
+        if 'gt_flow' in data_dict.keys():
+            gt_flow = data_dict['gt_flow']
+        # denoised_burst = dita_dict['denoised_burst] TODO
+
+        burst = burst.to('cuda')
+        gt_frame = gt_frame.to('cuda')
+        pred = self.pred(burst)
+        loss = self.loss(pred, gt_frame, x)
         return loss
     
     def pred(self, x):

@@ -19,10 +19,11 @@ def do_train(args, cfg, model, optimizer, scheduler, data_loader, device, summar
 
     print('Training Starts!!!')
     model.train()
-    for iteration, (burst, gt_frame, gt_flow, meta_info) in enumerate(data_loader['train'], args.resume_iter+1):
+    for iteration, data_dict in enumerate(data_loader['train'], args.resume_iter+1):
+
         optimizer.zero_grad()
         with torch.autograd.detect_anomaly():
-            loss = model(burst, gt_frame)
+            loss = model(data_dict)
             loss = loss.mean()
 
             loss.backward()
