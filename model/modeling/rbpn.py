@@ -69,6 +69,8 @@ class Net(nn.Module):
         
         if cfg.MODEL.FIXUP_INIT:
             from .base_networks import ResnetBlock_fixup_init as ResnetBlock
+        else:
+            from .base_networks import ResnetBlock
 
         ###DBPNS
         self.DBPN = DBPNS(base_filter, feat, self.scale_factor)
