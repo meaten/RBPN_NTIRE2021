@@ -22,14 +22,16 @@ class ModelWithLoss(nn.Module):
         self.model = RBPN(cfg)
         self.build_loss(cfg)
 
-    def forward(self, x, target):
+    def forward(self, x, target, gt_flow=None, ):
         x = x.to('cuda')
         target = target.to('cuda')
         pred = self.pred(x)
-        loss = self.loss(pred, target, x)
+        
+        loss = 0
+        loss += self.recon_loss(pred, target, x)
         return loss
     
-    def pred(self, x):
+    def pred(self, x, return_flow=False):
         if torch.isnan(x).sum().item() > 0 or torch.isinf(x).sum().item() > 0:
             import pdb;pdb.set_trace()
         
@@ -47,7 +49,10 @@ class ModelWithLoss(nn.Module):
         if torch.isnan(pred).sum().item() > 0 or torch.isinf(pred).sum().item() > 0:
             import pdb;pdb.set_trace()
         
-        return pred
+        if return_flow:
+            return pred, flow
+        else:
+            return pred
     
     def build_flow_model(self, cfg):
         self.flow_model = PWCNet(load_pretrained=True, weights_path=cfg.PWCNET_WEIGHTS)
@@ -67,7 +72,7 @@ class ModelWithLoss(nn.Module):
         else:
             raise ValueError(f"unknown loss function {cfg.MODEL.LOSS}")
             
-    def loss(self, pred, target, x):
+    def recon_loss(self, pred, target, x):
         if self.loss_name == 'l1':
             return self.l1(pred, target)
         elif self.loss_name == 'alignedl2':
