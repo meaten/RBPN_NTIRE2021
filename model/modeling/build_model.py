@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from model.provided_toolkit.pwcnet.pwcnet import PWCNet
 from .rbpn import Net as RBPN
+from .autoencoder_v4 import UNet
 from .misc import Nearest
 # from model.provided_toolkit.utils.metrics import AlignedL2_test as AlignedL2
 from model.provided_toolkit.utils.metrics import AlignedL2
@@ -21,44 +22,56 @@ class ModelWithLoss(nn.Module):
             self.build_flow_model(cfg)
         self.model = RBPN(cfg)
         self.build_loss(cfg)
+        
+        self.flow_refine = cfg.MODEL.FLOW_REFINE
+        if self.flow_refine:
+            if not self.use_flow:
+                raise ValueError("you need to use flow images as input before refining flow")
+            self.FR_model = UNet(3 * 2 + 2, 2)
+            
+        self.denoise_burst = cfg.MODEL.DENOISE_BURST
+        if self.denoise_burst:
+            self.denoise_model = UNet(4, 4)
 
     def forward(self, data_dict):
-        burst = data_dict['burst']
-        gt_frame = data_dict['gt_frame']
-        if 'gt_flow' in data_dict.keys():
-            gt_flow = data_dict['gt_flow']
-        # denoised_burst = dita_dict['denoised_burst] TODO
-
-        burst = burst.to('cuda')
-        gt_frame = gt_frame.to('cuda')
-        pred = self.pred(burst)
-        loss = self.recon_loss(pred, gt_frame, burst)
+        ret = self.pred(data_dict)
+        loss = self.loss(ret)
 
         return loss
     
-    def pred(self, x, return_flow=False):
-        if torch.isnan(x).sum().item() > 0 or torch.isinf(x).sum().item() > 0:
-            import pdb;pdb.set_trace()
+    def pred(self, data_dict):
+        burst = data_dict['burst']
+        burst = burst.cuda()
+        
+        if self.denoise_burst:
+            size = burst.size()
+            burst = burst + self.denoise_model(burst.view(-1, *size[2:])).view(size)
         
         if self.use_flow:
-            aligned_x = self.preprocess(x)
-            batch, burst, channel, height, width = aligned_x.shape
-            flow = [torch.zeros(batch, 2, height, width).to('cuda')]
-            for j in range(1, aligned_x.shape[1]):
-                flow.append(self.flow_model(aligned_x[:, 0, :, :, :], aligned_x[:, j, :, :, :]))
-            pred = self.model(x, flow=flow)
+            aligned_burst = self.preprocess(burst)
+            batch, burst_size, channel, height, width = aligned_burst.shape
+            flow_list = [torch.zeros(batch, 2, height, width).to('cuda')]
+            for j in range(1, burst_size):
+                flow = self.flow_model(aligned_burst[:, 0, :, :, :], aligned_burst[:, j, :, :, :])
+                if self.flow_refine:
+                    flow += self.FR_model(torch.cat([flow, aligned_burst[:, 0, :, :, :], aligned_burst[:, j, :, :, :]], axis=1))
+                flow_list.append(flow)
+            pred = self.model(burst, flow=flow_list)
         
         else:
-            pred = self.model(x)
+            pred = self.model(burst)
             
         if torch.isnan(pred).sum().item() > 0 or torch.isinf(pred).sum().item() > 0:
             import pdb;pdb.set_trace()
         
-        if return_flow:
-            return pred, flow
-        else:
-            return pred
-    
+        data_dict['pred'] = pred
+        if self.denoise_burst:
+            data_dict['denoised_burst'] = burst
+        if self.flow_refine:
+            data_dict['refined_flow'] = flow_list
+            
+        return data_dict
+        
     def build_flow_model(self, cfg):
         self.flow_model = PWCNet(load_pretrained=True, weights_path=cfg.PWCNET_WEIGHTS)
         for param in self.flow_model.parameters():
@@ -76,6 +89,12 @@ class ModelWithLoss(nn.Module):
             self.pit = PITLoss(cfg)
         else:
             raise ValueError(f"unknown loss function {cfg.MODEL.LOSS}")
+        
+    def loss(self, data_dict):
+        loss = 0
+        loss += self.recon_loss(data_dict['pred'].cuda(), data_dict['gt_frame'].cuda(), data_dict['burst'].cuda())
+        
+        return loss
             
     def recon_loss(self, pred, target, x):
         if self.loss_name == 'l1':

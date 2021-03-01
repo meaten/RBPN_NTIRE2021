@@ -10,12 +10,14 @@ _C.MODEL.BURST_SIZE = 8
 _C.MODEL.NUM_RESBLOCK = 5
 _C.MODEL.USE_FLOW = False
 # _C.MODEL.INPUT_CHANNEL = 3
-_C.MODEL.PREPROCESS = "Nearest"  # 'Nearest' or 'RGGB2channel'
+_C.MODEL.PREPROCESS = "RGGB2channel"  # 'Nearest' or 'RGGB2channel'
 _C.MODEL.OUTPUT_CHANNEL = 3
 _C.MODEL.EXTRACTOR_TYPE = 'normal'  # 'original', 'deep', 'deform', 'deepdeform', 'pcd_align'
 _C.MODEL.LOSS = 'l1'  # 'l1', 'pit' or 'alignedl2'
 _C.MODEL.NUM_RESIDUAL = 20
 _C.MODEL.FIXUP_INIT = False
+_C.MODEL.FLOW_REFINE = False
+_C.MODEL.DENOISE_BURST = False
 
 _C.SOLVER = CN()
 _C.SOLVER.OPTIMIZER = 'radam'  # 'radam' or 'adabound'

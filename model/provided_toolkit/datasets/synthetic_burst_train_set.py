@@ -91,7 +91,7 @@ class SyntheticBurst(torch.utils.data.Dataset):
             'burst': burst,
             'gt_frame': frame_gt,
             'gt_flow': flow_vectors,
-            'denoised_burst': denoised_burst
+            'gt_denoised_burst': denoised_burst
         }
 
         return ret_dic
