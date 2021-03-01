@@ -65,11 +65,11 @@ def do_test_synthetic(args, cfg, model, device):
         # Save predictions as png
         name = name = str(idx).zfill(len(str(len(test_dataset))))
         cv2.imwrite(os.path.join(vis_dir, '{}.png'.format(name)), output_image)
-        
+    
     mean_psnr = sum(scores_all) / len(scores_all)
 
     with open(os.path.join(vis_dir, 'result_psnr.txt'), 'w') as f:
-        string = 'Mean PSNR is {:0.3f}'.format(mean_psnr.item())
+        string = 'Mean PSNR is {:0.3f}\n'.format(mean_psnr.item())
         print(string)
         f.write(string)
     
@@ -176,7 +176,7 @@ def pred_ensemble(model, burst, num_frame, device):
         net_pred = model.pred(ensemble_burst)
         net_pred = torch.mean(net_pred, axis=0)
         
-    return net_pred
+    return net_pred.clamp(0.0, 1.0)
     
 
 def get_ensemble_idx(burst_size=14, num_frame=8):

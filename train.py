@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader, RandomSampler
 from torch.utils.data.sampler import BatchSampler
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import MultiStepLR
+from torch_optimizer import AdaBound, RAdam
 
 from model.config import cfg
 from model.engine.trainer import do_train
@@ -20,6 +21,8 @@ from model.provided_toolkit.datasets.synthetic_burst_train_set import SyntheticB
 from model.provided_toolkit.datasets.zurich_raw2rgb_dataset import ZurichRAW2RGB
 from model.provided_toolkit.datasets.burstsr_dataset import BurstSRDataset
 from model.utils.lr_scheduler import WarmupMultiStepLR
+from model.data.transforms.data_preprocess import SyntheticTransforms
+from torchvision.transforms import ToTensor
 
 
 def parse_args() -> None:
@@ -46,9 +49,13 @@ def train(args, cfg):
     print('Loading Datasets...')
     data_loader = {}
 
-    # train_transforms =
+    if cfg.SOLVER.AUGMENTATION:
+        train_transforms = SyntheticTransforms()
+    else:
+        train_transforms = ToTensor()
+        
     if cfg.DATASET.TRACK == 'synthetic':
-        train_dataset = SyntheticBurst(ZurichRAW2RGB(cfg.DATASET.TRAIN_SYNTHETIC), crop_sz=cfg.SOLVER.PATCH_SIZE, burst_size=cfg.MODEL.BURST_SIZE)
+        train_dataset = SyntheticBurst(ZurichRAW2RGB(cfg.DATASET.TRAIN_SYNTHETIC), crop_sz=cfg.SOLVER.PATCH_SIZE, burst_size=cfg.MODEL.BURST_SIZE, transform=train_transforms)
     elif cfg.DATASET.TRACK == 'real':
         train_dataset = BurstSRDataset(cfg.DATASET.REAL, split='train', crop_sz=cfg.SOLVER.PATCH_SIZE // 8, burst_size=cfg.MODEL.BURST_SIZE)
     sampler = RandomSampler(train_dataset)
@@ -67,7 +74,11 @@ def train(args, cfg):
 
     #     data_loader['val'] = val_loader
 
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
+    if cfg.SOLVER.OPTIMIZER == 'radam':
+        optimizer = RAdam(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
+    elif cfg.SOLVER.OPTIMIZER == 'adabound':
+        optimizer = AdaBound(filter(lambda p:p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR, final_lr=cfg.SOLVER.FINAL_LR)
+    # optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=cfg.SOLVER.LR)
     # scheduler = MultiStepLR(optimizer, cfg.SOLVER.LR_STEP, gamma=0.1)
     scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.LR, cfg.SOLVER.LR_STEP, warmup_factor=cfg.SOLVER.WARMUP_FACTOR, warmup_iters=cfg.SOLVER.WARMUP_ITER)
 
@@ -77,9 +88,9 @@ def train(args, cfg):
         optimizer.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'optimizer', 'iteration_{}.pth'.format(args.resume_iter))))
         scheduler.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'scheduler', 'iteration_{}.pth'.format(args.resume_iter))))
     elif cfg.SOLVER.PRETRAIN_MODEL != '':
-        print(f'Resume from {cfg.SOLVER.PRETRAIN_MODEL}')
+        print(f'load pretrain model from {cfg.SOLVER.PRETRAIN_MODEL}')
         model.model.load_state_dict(fix_model_state_dict(torch.load(cfg.SOLVER.PRETRAIN_MODEL)))
-        
+
     if cfg.SOLVER.SYNC_BATCHNORM:
         model = convert_model(model).to(device)
     

@@ -143,6 +143,7 @@ class AlignedL2_test(nn.Module):
         pred_warped_m = pred_warped
         # we want to optimize not only "valid" pixels but all pixels
         valid = torch.ones_like(pred_warped_m)
+        
         # Ignore boundary pixels if specified
         if self.boundary_ignore is not None:
             pred_warped_m = pred_warped_m[..., self.boundary_ignore:-self.boundary_ignore,
