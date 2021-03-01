@@ -87,6 +87,9 @@ def train(args, cfg):
         model.model.load_state_dict(fix_model_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(args.resume_iter)))))
         optimizer.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'optimizer', 'iteration_{}.pth'.format(args.resume_iter))))
         scheduler.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'scheduler', 'iteration_{}.pth'.format(args.resume_iter))))
+    elif cfg.SOLVER.PRETRAIN_MODEL != '':
+        print(f'load pretrain model from {cfg.SOLVER.PRETRAIN_MODEL}')
+        model.model.load_state_dict(fix_model_state_dict(torch.load(cfg.SOLVER.PRETRAIN_MODEL)))
 
     if cfg.SOLVER.SYNC_BATCHNORM:
         model = convert_model(model).to(device)

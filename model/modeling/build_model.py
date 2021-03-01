@@ -4,6 +4,7 @@ import torch.nn as nn
 from model.provided_toolkit.pwcnet.pwcnet import PWCNet
 from .rbpn import Net as RBPN
 from .misc import Nearest
+# from model.provided_toolkit.utils.metrics import AlignedL2_test as AlignedL2
 from model.provided_toolkit.utils.metrics import AlignedL2
 from model.engine.loss_functions import PITLoss
 
@@ -12,8 +13,6 @@ class ModelWithLoss(nn.Module):
     def __init__(self, cfg):
         super(ModelWithLoss, self).__init__()
         self.flow_model = None
-        self.pretrain = False
-        self.pretrain_iter = 0
         
         self.preprocess = Nearest()
 
@@ -31,6 +30,9 @@ class ModelWithLoss(nn.Module):
         return loss
     
     def pred(self, x):
+        if torch.isnan(x).sum().item() > 0 or torch.isinf(x).sum().item() > 0:
+            import pdb;pdb.set_trace()
+        
         if self.use_flow:
             aligned_x = self.preprocess(x)
             batch, burst, channel, height, width = aligned_x.shape
@@ -41,6 +43,9 @@ class ModelWithLoss(nn.Module):
         
         else:
             pred = self.model(x)
+            
+        if torch.isnan(pred).sum().item() > 0 or torch.isinf(pred).sum().item() > 0:
+            import pdb;pdb.set_trace()
         
         return pred
     
@@ -50,12 +55,10 @@ class ModelWithLoss(nn.Module):
             param.requires_grad = False
             
     def build_loss(self, cfg):
-        self.l1 = nn.L1Loss()
         self.loss_name = cfg.MODEL.LOSS
         if cfg.MODEL.LOSS == 'l1':
-            pass
+            self.l1 = nn.L1Loss()
         elif cfg.MODEL.LOSS == 'alignedl2':
-            self.pretrain_iter = cfg.SOLVER.PRETRAIN_ITER
             self.pretrain = True
             if not self.use_flow:
                 self.build_flow_model(cfg)
@@ -66,15 +69,11 @@ class ModelWithLoss(nn.Module):
             raise ValueError(f"unknown loss function {cfg.MODEL.LOSS}")
             
     def loss(self, pred, target, x):
-        if self.loss_name == 'l1' or self.pretrain:
+        if self.loss_name == 'l1':
             return self.l1(pred, target)
-        elif self.loss_name == 'alignedl2' and not self.pretrain:
+        elif self.loss_name == 'alignedl2':
             return self.alignedl2(pred, target, x)
         elif self.loss_name == 'pit':
             return self.pit(pred, target)
         else:
             raise ValueError
-        
-    def chg_flag(self, iter):
-        if iter > self.pretrain_iter:
-            self.pretrain = False

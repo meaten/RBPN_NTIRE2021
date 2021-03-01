@@ -64,7 +64,7 @@ def match_colors(im_ref, im_q, im_test, ksz, gauss_kernel):
     for ir, iq in zip(im_ref_mean_re, im_q_mean_re):
         c = torch.lstsq(ir.t(), iq.t())
         c = c.solution[:3]
-        if torch.isnan(c).sum().item() > 0 or torch.isinf(c).sum().item():
+        if torch.isinf(c).sum().item() > 0 or torch.isnan(c).sum().item() > 0:
             c = torch.zeros_like(c).float()
         c_mat_all.append(c)
 
@@ -91,9 +91,5 @@ def match_colors(im_ref, im_q, im_test, ksz, gauss_kernel):
     im_test_re = im_test.view(*im_test.shape[:2], -1)
     im_t_conv = torch.matmul(im_test_re.permute(0, 2, 1), c_mat).permute(0, 2, 1)
     im_t_conv = im_t_conv.view(im_test.shape)
-    
-    if torch.isnan(im_t_conv).sum().item() > 0:
-        import pdb;pdb.set_trace()
 
     return im_t_conv, valid
-

@@ -21,19 +21,18 @@ def do_train(args, cfg, model, optimizer, scheduler, data_loader, device, summar
     model.train()
     for iteration, (burst, gt_frame, gt_flow, meta_info) in enumerate(data_loader['train'], args.resume_iter+1):
         optimizer.zero_grad()
-        loss = model(burst, gt_frame)
-        loss = loss.mean()
+        with torch.autograd.detect_anomaly():
+            loss = model(burst, gt_frame)
+            loss = loss.mean()
 
-        loss.backward()
-        optimizer.step()
-        scheduler.step()
+            loss.backward()
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
+            
+            optimizer.step()
+            scheduler.step()
 
         logging_loss += loss.item()
-        
-        if args.num_gpus > 1:
-            model.module.chg_flag(iteration)
-        else:
-            model.chg_flag(iteration)
             
         trained_time += time.time() - end
         end = time.time()
