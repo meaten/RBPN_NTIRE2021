@@ -1,5 +1,0 @@
-MODEL:
-  PREPROCESS: 'RGGB2channel'
-  EXTRACTOR_TYPE: 'normal'
-SOLVER:
-  BATCH_SIZE: 1

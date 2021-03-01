@@ -54,7 +54,9 @@ class Net(nn.Module):
             self.extractor = OriginalExtractor(input_channel, base_filter, use_flow=self.use_flow)
         elif cfg.MODEL.EXTRACTOR_TYPE == 'normal':
             self.extractor = NormalExtractor(input_channel, base_filter, use_flow=self.use_flow)
-        elif cfg.MODEL.EXTRACTOR_TYPE == 'deep':
+        elif cfg.MODEL.EXTRACTOR_TYPE == 'deep' and cfg.MODEL.FIXUP_INIT:
+            self.extractor = DeepExtractor_fixup_init(input_channel, base_filter, use_flow=self.use_flow)
+        elif cfg.MODEL.EXTRACTOR_TYPE == 'deep' and not cfg.MODEL.FIXUP_INIT:
             self.extractor = DeepExtractor(input_channel, base_filter, use_flow=self.use_flow)
         elif cfg.MODEL.EXTRACTOR_TYPE == 'deform':
             self.extractor = DeformableExtractor(input_channel, base_filter, use_flow=self.use_flow)
@@ -64,7 +66,9 @@ class Net(nn.Module):
             self.extractor = PCDAlignExtractor(input_channel, base_filter)
         else:
             raise NotImplementedError
-
+        
+        if cfg.MODEL.FIXUP_INIT:
+            from .base_networks import ResnetBlock_fixup_init as ResnetBlock
 
         ###DBPNS
         self.DBPN = DBPNS(base_filter, feat, self.scale_factor)

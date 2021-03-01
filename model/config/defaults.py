@@ -15,6 +15,7 @@ _C.MODEL.OUTPUT_CHANNEL = 3
 _C.MODEL.EXTRACTOR_TYPE = 'normal'  # 'original', 'deep', 'deform', 'deepdeform', 'pcd_align'
 _C.MODEL.LOSS = 'l1'  # 'l1', 'pit' or 'alignedl2'
 _C.MODEL.NUM_RESIDUAL = 20
+_C.MODEL.FIXUP_INIT = False
 
 _C.SOLVER = CN()
 _C.SOLVER.OPTIMIZER = 'radam'  # 'radam' or 'adabound'
