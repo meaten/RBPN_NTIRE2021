@@ -20,15 +20,12 @@ class ModelWithLoss(nn.Module):
         self.use_flow = cfg.MODEL.USE_FLOW
         if self.use_flow:
             self.build_flow_model(cfg)
+            self.flow_refine = cfg.MODEL.FLOW_REFINE
+            if self.flow_refine:
+                self.FR_model = UNet(3 * 2 + 2, 2)
         self.model = RBPN(cfg)
         self.build_loss(cfg)
         
-        self.flow_refine = cfg.MODEL.FLOW_REFINE
-        if self.flow_refine:
-            if not self.use_flow:
-                raise ValueError("you need to use flow images as input before refining flow")
-            self.FR_model = UNet(3 * 2 + 2, 2)
-            
         self.denoise_burst = cfg.MODEL.DENOISE_BURST
         if self.denoise_burst:
             self.denoise_model = UNet(4, 4)
@@ -79,8 +76,9 @@ class ModelWithLoss(nn.Module):
             
     def build_loss(self, cfg):
         self.loss_name = cfg.MODEL.LOSS
+        self.l1 = nn.L1Loss()
         if cfg.MODEL.LOSS == 'l1':
-            self.l1 = nn.L1Loss()
+            pass
         elif cfg.MODEL.LOSS == 'alignedl2':
             if not self.use_flow:
                 self.build_flow_model(cfg)
@@ -93,7 +91,10 @@ class ModelWithLoss(nn.Module):
     def loss(self, data_dict):
         loss = 0
         loss += self.recon_loss(data_dict['pred'].cuda(), data_dict['gt_frame'].cuda(), data_dict['burst'].cuda())
-        
+        if self.denoise_burst and 'gt_denoised_burst' in data_dict:
+            loss += 0.1 * self.l1(data_dict['denoised_burst'].cuda(), data_dict['gt_denoised_burst'].cuda()).cuda()
+        if self.flow_refine and 'gt_flow' in data_dict:
+            loss += 0.1 * self.l1(torch.stack(data_dict['refined_flow']).cuda().permute([1, 0, 2, 3, 4]), data_dict['gt_flow'].cuda()).cuda()
         return loss
             
     def recon_loss(self, pred, target, x):
