@@ -53,14 +53,15 @@ def do_test_synthetic(args, cfg, model, device):
     print(f"visualize heatmaps on the validation data at {cfg.DATASET.TRAIN_SYNTHETIC}/test...")
     scores_all = []
     for idx in tqdm(range(len(test_dataset))):
-        burst, frame_gt, gt_flow, meta_info = test_dataset[idx]
+        # burst, frame_gt, gt_flow, meta_info = test_dataset[idx]
+        data_dict = test_dataset[idx]
         
-        net_pred = pred_ensemble(model, burst, cfg.MODEL.BURST_SIZE, device)
-        frame_gt = frame_gt.to(device)
-        psnr = psnr_fn(net_pred.unsqueeze(0), frame_gt.unsqueeze(0)).cpu().numpy()
+        net_pred = pred_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+        gt_frame = data_dict['gt_frame'].to(device)
+        psnr = psnr_fn(net_pred.unsqueeze(0), gt_frame.unsqueeze(0)).cpu().numpy()
         scores_all.append(psnr)
         
-        output_image = create_output_image(frame_gt, net_pred, psnr, burst)
+        output_image = create_output_image(gt_frame, net_pred, psnr, data_dict['burst'])
         
         # Save predictions as png
         name = name = str(idx).zfill(len(str(len(test_dataset))))
@@ -81,9 +82,10 @@ def do_test_synthetic(args, cfg, model, device):
     
         print(f"test on validation data at {cfg.DATASET.VAL_SYNTHETIC}...")
         for idx in tqdm(range(len(test_dataset))):
-            burst, burst_name = test_dataset[idx]
+            data_dict = test_dataset[idx]
+            burst_name = data_dict['burst_name']
             
-            net_pred = pred_ensemble(model, burst, cfg.MODEL.BURST_SIZE, device)
+            net_pred = pred_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
             
             # Normalize to 0  2^14 range and convert to numpy array
             net_pred_submit = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 14)).cpu().numpy().astype(np.uint16)
@@ -111,12 +113,12 @@ def do_test_real(args, cfg, model, device):
     print(f"testing and visualizing on validation data at {cfg.DATASET.REAL}/val...")
     scores_all = []
     for idx in tqdm(range(len(test_dataset)), total=len(test_dataset)):
-        burst, frame_gt, meta_info_burst, meta_info_gt = test_dataset[idx]
+        data_dict = test_dataset[idx]
         
-        net_pred = pred_ensemble(model, burst, cfg.MODEL.BURST_SIZE, device)
+        net_pred = pred_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
         
         # Calculate Aligned PSNR
-        score, pred_warped_m, gt = aligned_psnr_fn(net_pred.unsqueeze(0), frame_gt.unsqueeze(0).to(device), burst.unsqueeze(0).to(device))
+        score, pred_warped_m, gt = aligned_psnr_fn(net_pred.unsqueeze(0), data_dict['gt_frame'].unsqueeze(0).to(device), data_dict['burst'].unsqueeze(0).to(device))
         scores_all.append(score)
         
         output_image = create_output_image(gt.squeeze(0), pred_warped_m.squeeze(0), score)
@@ -163,7 +165,8 @@ def create_output_image(frame_gt, net_pred, psnr, burst):
     return output_image
     
     
-def pred_ensemble(model, burst, num_frame, device):
+def pred_ensemble(model, data_dict, num_frame, device):
+    burst = data_dict['burst']
     shape = burst.shape
     burst_size = shape[0]
     n_ensemble = burst_size - num_frame + 1
@@ -171,9 +174,10 @@ def pred_ensemble(model, burst, num_frame, device):
     for i, ens_idx in enumerate(get_ensemble_idx(burst_size=burst_size, num_frame=num_frame)):
         ensemble_burst[i] = burst[ens_idx]
     ensemble_burst.to(device)
-    
+    data_dict['burst'] = ensemble_burst
+
     with torch.no_grad():
-        net_pred = model.pred(ensemble_burst)
+        net_pred = model.pred(data_dict)
         net_pred = torch.mean(net_pred, axis=0)
         
     return net_pred.clamp(0.0, 1.0)
