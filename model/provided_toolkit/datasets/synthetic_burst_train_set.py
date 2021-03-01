@@ -75,16 +75,23 @@ class SyntheticBurst(torch.utils.data.Dataset):
         frame_crop = syn_burst_utils.random_crop(frame, crop_sz)
 
         # Generate RAW burst
-        burst, frame_gt, burst_rgb, flow_vectors, meta_info = syn_burst_utils.rgb2rawburst(frame_crop,
-                                                                                           self.burst_size,
-                                                                                           self.downsample_factor,
-                                                                                           burst_transformation_params=self.burst_transformation_params,
-                                                                                           image_processing_params=self.image_processing_params,
-                                                                                           interpolation_type=self.interpolation_type
-                                                                                           )
+        burst, frame_gt, burst_rgb, flow_vectors, denoised_burst, meta_info = syn_burst_utils.rgb2rawburst(frame_crop,
+                                                                                                           self.burst_size,
+                                                                                                           self.downsample_factor,
+                                                                                                           burst_transformation_params=self.burst_transformation_params,
+                                                                                                           image_processing_params=self.image_processing_params,
+                                                                                                           interpolation_type=self.interpolation_type
+                                                                                                           )
 
         if self.burst_transformation_params.get('border_crop') is not None:
             border_crop = self.burst_transformation_params.get('border_crop')
             frame_gt = frame_gt[:, border_crop:-border_crop, border_crop:-border_crop]
+            
+        ret_dic = {
+            'burst': burst,
+            'gt_frame': frame_gt,
+            'gt_flow': flow_vectors,
+            'denoised_burst': denoised_burst
+        }
 
-        return burst, frame_gt, flow_vectors, meta_info
+        return ret_dic

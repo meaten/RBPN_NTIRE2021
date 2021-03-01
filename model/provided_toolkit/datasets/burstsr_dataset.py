@@ -385,8 +385,14 @@ class BurstSRDataset(torch.utils.data.Dataset):
         for k, v in meta_info_burst.items():
             if isinstance(v, (list, tuple)):
                 meta_info_burst[k] = torch.tensor(v)
+                
+        ret_dic = {
+            'burst': burst,
+            'frame_gt': frame_gt,
+            'meta': [meta_info_burst, meta_info_gt]
+        }
 
-        return burst, frame_gt, meta_info_burst, meta_info_gt
+        return ret_dic
 
 
 def pack_raw_image(im_raw):

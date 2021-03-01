@@ -1,3 +1,4 @@
+from numpy.core.fromnumeric import _repeat_dispatcher
 import torch
 import random
 import cv2
@@ -106,18 +107,21 @@ def rgb2rawburst(image, burst_size, downsample_factor=1, burst_transformation_pa
     # Add noise
     if image_processing_params['add_noise']:
         shot_noise_level, read_noise_level = rgb2raw.random_noise_levels()
-        image_burst = rgb2raw.add_noise(image_burst, shot_noise_level, read_noise_level)
+        image_burst_noise = rgb2raw.add_noise(image_burst, shot_noise_level, read_noise_level)
     else:
         shot_noise_level = 0
         read_noise_level = 0
+        image_burst_noise = image_burst
 
     # Clip saturated pixels.
+    image_burst_noise = image_burst_noise.clamp(0.0, 1.0)
     image_burst = image_burst.clamp(0.0, 1.0)
 
     meta_info = {'rgb2cam': rgb2cam, 'cam2rgb': cam2rgb, 'rgb_gain': rgb_gain, 'red_gain': red_gain,
                  'blue_gain': blue_gain, 'smoothstep': use_smoothstep, 'gamma': use_gamma,
                  'shot_noise_level': shot_noise_level, 'read_noise_level': read_noise_level}
-    return image_burst, image, image_burst_rgb, flow_vectors, meta_info
+    
+    return image_burst_noise, image, image_burst_rgb, flow_vectors, image_burst, meta_info
 
 
 def get_tmat(image_shape, translation, theta, shear_values, scale_factors):

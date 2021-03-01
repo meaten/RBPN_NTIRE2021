@@ -34,5 +34,10 @@ class SyntheticBurstVal(torch.utils.data.Dataset):
         burst_name = '{:04d}'.format(index)
         burst = [self._read_burst_image(index, i) for i in range(self.burst_size)]
         burst = torch.stack(burst, 0)
+        
+        ret_dic = {
+            "burst": burst,
+            "name": burst_name
+        }
 
-        return burst, burst_name
+        return ret_dic
