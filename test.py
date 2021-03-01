@@ -60,7 +60,7 @@ def do_test_synthetic(args, cfg, model, device):
         psnr = psnr_fn(net_pred.unsqueeze(0), frame_gt.unsqueeze(0)).cpu().numpy()
         scores_all.append(psnr)
         
-        output_image = create_output_image(frame_gt, net_pred, psnr)
+        output_image = create_output_image(frame_gt, net_pred, psnr, burst)
         
         # Save predictions as png
         name = name = str(idx).zfill(len(str(len(test_dataset))))
@@ -133,23 +133,33 @@ def do_test_real(args, cfg, model, device):
         f.write(string)
     
     
-def create_output_image(frame_gt, net_pred, psnr):
+def create_output_image(frame_gt, net_pred, psnr, burst):
     max_heatmap = 0.3
     diff = torch.norm(frame_gt - net_pred, dim=0)
     diff = (diff.clamp(0.0, max_heatmap) / max_heatmap * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
     heatmap = cv2.applyColorMap(diff, cv2.COLORMAP_JET)
     
     net_pred = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
-    frame_gt = (frame_gt.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
-    
+    frame_gt = (frame_gt.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8) # (384,384,3)
+
     alpha = 0.3
     heatmap_blended = cv2.addWeighted(frame_gt, alpha, heatmap, 1 - alpha, 0)
     
-    output_image = np.concatenate([frame_gt, net_pred, heatmap_blended], axis=1)
+    ### make rgb image from burst image
+    ### burst (14, 4, 48, 48), (num frame, channel, Height, Width)
+    rgb = burst[:,[0,1,3],:,:] # (14, 3, 48, 48)
+    base_rgb_image = rgb[:1,:,:,:] # (1, 3, 48, 48)
+
+    ### resize rgb image
+    base_rgb_image_8x = torch.nn.functional.interpolate(base_rgb_image, scale_factor=8., mode='bilinear', align_corners=False)
+    base_rgb_image_8x_np = (base_rgb_image_8x[0,:,:,:].permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
+
+    output_image = np.concatenate([frame_gt, net_pred, heatmap_blended, base_rgb_image_8x_np], axis=1)
     imtext(output_image, "GT", (10, 30), 1.5, 1, (0, 0, 0), (255, 255, 255))
     imtext(output_image, f"PSNR: {psnr:.3f}", (10, 60), 1.5, 1, (0, 0, 0), (255, 255, 255))
     imtext(output_image, "SR", (10 + net_pred.shape[0], 30), 1.5, 1, (0, 0, 0), (255, 255, 255))
-    
+    imtext(output_image, "Bilinear", (10 + 3 * net_pred.shape[0], 30), 1.5, 1, (0, 0, 0), (255, 255, 255))
+
     return output_image
     
     
