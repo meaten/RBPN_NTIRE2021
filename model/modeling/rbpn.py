@@ -54,7 +54,9 @@ class Net(nn.Module):
             self.extractor = OriginalExtractor(input_channel, base_filter, use_flow=self.use_flow)
         elif cfg.MODEL.EXTRACTOR_TYPE == 'normal':
             self.extractor = NormalExtractor(input_channel, base_filter, use_flow=self.use_flow)
-        elif cfg.MODEL.EXTRACTOR_TYPE == 'deep':
+        elif cfg.MODEL.EXTRACTOR_TYPE == 'deep' and cfg.MODEL.FIXUP_INIT:
+            self.extractor = DeepExtractor_fixup_init(input_channel, base_filter, use_flow=self.use_flow)
+        elif cfg.MODEL.EXTRACTOR_TYPE == 'deep' and not cfg.MODEL.FIXUP_INIT:
             self.extractor = DeepExtractor(input_channel, base_filter, use_flow=self.use_flow)
         elif cfg.MODEL.EXTRACTOR_TYPE == 'deform':
             self.extractor = DeformableExtractor(input_channel, base_filter, use_flow=self.use_flow)
@@ -64,7 +66,9 @@ class Net(nn.Module):
             self.extractor = PCDAlignExtractor(input_channel, base_filter)
         else:
             raise NotImplementedError
-
+        
+        if cfg.MODEL.FIXUP_INIT:
+            from .base_networks import ResnetBlock_fixup_init as ResnetBlock
 
         ###DBPNS
         self.DBPN = DBPNS(base_filter, feat, self.scale_factor)
@@ -93,18 +97,6 @@ class Net(nn.Module):
         #Reconstruction
         self.output = ConvBlock((burst_size-1)*feat, output_channel, 3, 1, 1, activation=None, norm=None)
 
-
-        for m in self.modules():
-            classname = m.__class__.__name__
-            if classname.find('Conv2d') != -1:
-        	    torch.nn.init.kaiming_normal_(m.weight)
-        	    if m.bias is not None:
-        		    m.bias.data.zero_()
-            elif classname.find('ConvTranspose2d') != -1:
-        	    torch.nn.init.kaiming_normal_(m.weight)
-        	    if m.bias is not None:
-        		    m.bias.data.zero_()
-                    
             
     def forward(self, x, flow=None):
         x = self.preprocess(x)

@@ -4,6 +4,7 @@ import torch.nn as nn
 from model.provided_toolkit.pwcnet.pwcnet import PWCNet
 from .rbpn import Net as RBPN
 from .misc import Nearest
+# from model.provided_toolkit.utils.metrics import AlignedL2_test as AlignedL2
 from model.provided_toolkit.utils.metrics import AlignedL2
 from model.engine.loss_functions import PITLoss
 
@@ -29,6 +30,9 @@ class ModelWithLoss(nn.Module):
         return loss
     
     def pred(self, x):
+        if torch.isnan(x).sum().item() > 0 or torch.isinf(x).sum().item() > 0:
+            import pdb;pdb.set_trace()
+        
         if self.use_flow:
             aligned_x = self.preprocess(x)
             batch, burst, channel, height, width = aligned_x.shape
@@ -39,6 +43,9 @@ class ModelWithLoss(nn.Module):
         
         else:
             pred = self.model(x)
+            
+        if torch.isnan(pred).sum().item() > 0 or torch.isinf(pred).sum().item() > 0:
+            import pdb;pdb.set_trace()
         
         return pred
     
