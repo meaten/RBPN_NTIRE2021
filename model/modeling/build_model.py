@@ -32,7 +32,7 @@ class ModelWithLoss(nn.Module):
         burst = burst.to('cuda')
         gt_frame = gt_frame.to('cuda')
         pred = self.pred(burst)
-        loss = self.loss(pred, gt_frame, x)
+        loss = self.recon_loss(pred, gt_frame, burst)
 
         return loss
     
