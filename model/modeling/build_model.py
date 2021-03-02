@@ -51,13 +51,16 @@ class ModelWithLoss(nn.Module):
         if self.use_flow:
             aligned_burst = self.preprocess(burst)
             batch, burst_size, channel, height, width = aligned_burst.shape
-            flow_list = [torch.zeros(batch, 2, height, width).to('cuda')]
-            for j in range(1, burst_size):
-                flow = self.flow_model(aligned_burst[:, 0, :, :, :], aligned_burst[:, j, :, :, :])
-                if self.flow_refine:
-                    flow += self.FR_model(torch.cat([flow, aligned_burst[:, 0, :, :, :], aligned_burst[:, j, :, :, :]], axis=1))
-                flow_list.append(flow)
-            pred = self.model(burst, flow=flow_list)
+            
+            flow = self.flow_model(aligned_burst[:, 0, :, :, :].unsqueeze(1).expand(-1, burst_size, -1, -1, -1).reshape(-1, channel, height, width),
+                                   aligned_burst.reshape(-1, channel, height, width))
+            if self.flow_refine:
+                flow += self.FR_model(torch.cat([flow,
+                                                 aligned_burst[:, 0, :, :, :].unsqueeze(1).expand(-1, burst_size, -1, -1, -1).reshape(-1, channel, height, width),
+                                                 aligned_burst.reshape(-1, channel, height, width)], axis=1))
+            flow = flow.view(-1, burst_size, 2, height, width)
+            flow[:, 0] = 0.0
+            pred = self.model(burst, flow=flow)
         
         else:
             pred = self.model(burst)
@@ -69,7 +72,7 @@ class ModelWithLoss(nn.Module):
         if self.denoise_burst:
             data_dict['denoised_burst'] = burst
         if self.flow_refine:
-            data_dict['refined_flow'] = flow_list
+            data_dict['refined_flow'] = flow
             
         return data_dict
         
@@ -96,10 +99,9 @@ class ModelWithLoss(nn.Module):
         loss = 0
         loss += self.recon_loss(data_dict['pred'].cuda(), data_dict['gt_frame'].cuda(), data_dict['burst'].cuda())
         if self.denoise_burst and 'gt_denoised_burst' in data_dict:
-            loss += 0.1 * self.l1(data_dict['denoised_burst'].cuda(), data_dict['gt_denoised_burst'].cuda()).cuda()
+            loss += 0.1 / self.burst_size * self.l1(data_dict['denoised_burst'].cuda(), data_dict['gt_denoised_burst'].cuda()).cuda()
         if self.flow_refine and 'gt_flow' in data_dict:
-            loss += 0.01 / self.burst_size * self.l1(torch.stack(data_dict['refined_flow']).cuda().permute([1, 0, 2, 3, 4]),
-                                                     data_dict['gt_flow'].cuda()).cuda()
+            loss += 0.01 / self.burst_size * self.l1(data_dict['refined_flow'], data_dict['gt_flow'].cuda()).cuda()
         return loss
             
     def recon_loss(self, pred, target, x):

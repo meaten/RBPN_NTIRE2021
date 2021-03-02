@@ -20,14 +20,18 @@ class OriginalExtractor(nn.Module):
         self.size_adjuster = nn.Upsample(scale_factor=0.5)
         
     def forward(self, x, flow=None):
-        features = [self.feat0(x[:, 0, :, :, :])]
-        for j in range(1, x.shape[1]):
-            if self.use_flow:
-                features.append(self.feat1(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :], self.size_adjuster(flow[j])), 1)))
-            else:
-                features.append(self.feat1(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :]), 1)))
+        init_feature = self.feat0(x[:, 0, :, :, :])
+        batch, burst_size, channel, height, width = x.shape
+        if self.use_flow:
+            features = self.feat1(torch.cat([x[:, 0, :, :, :].unsqueeze(1).expand(-1, 8, -1, -1, -1).reshape(-1, channel, height, width),
+                                             x.reshape(-1, channel, height, width),
+                                             self.size_adjuster(flow.view(-1, 2, height * 2, width * 2))], 1)).view(batch, burst_size, -1, height, width)
+        else:
+            features = self.feat1(torch.cat([x[:, 0, :, :, :].unsqueeze(1).expand(-1, 8, -1, -1, -1).reshape(-1, channel, height, width),
+                                             x.reshape(-1, channel, height, width)], 1)).view(batch, burst_size, -1, height, width)
+        features[:, 0] = init_feature
 
-        return features
+        return features.permute(1, 0, 2, 3, 4)
 
 
 class NormalExtractor(nn.Module):
@@ -176,20 +180,22 @@ class DeepDeformableExtractor(nn.Module):
         else:
             self.deform_conv = DCN_ID(base_filter, base_filter, base_filter*2, kernel_size=3, stride=1, padding=1)
 
+        self.size_adjuster = nn.Upsample(scale_factor=0.5)
 
     def forward(self, x, flow=None):
-        input_features = []
-        for j in range(x.shape[1]):
-            input_features.append(self.init_conv(x[:, j, :, :, :]))
-        
-        features = []
-        for j in range(x.shape[1]):
-            if self.use_flow:
-                features.append(self.deform_conv(input_features[j], torch.cat((input_features[0], input_features[j], flow[j]), 1)))
-            else:
-                features.append(self.deform_conv(input_features[j], torch.cat((input_features[0], input_features[j]), 1)))
+        batch, burst_size, channel, height, width = x.shape
+        input_feature = self.init_conv(x.reshape(-1, channel, height, width))
 
-        return features
+        input_feature_zero = input_feature.view(batch, burst_size, -1, height, width)[:, 0].unsqueeze(1).expand(-1, 8, -1, -1, -1).reshape(batch * burst_size, -1, height, width)
+        
+        if self.use_flow:
+            features = self.deform_conv(input_feature, torch.cat([input_feature_zero,
+                                                                  input_feature,
+                                                                  self.size_adjuster(flow.reshape(-1, 2, height * 2, width * 2))], 1))
+        else:
+            features = self.deform_conv(input_feature, torch.cat((input_feature_zero, input_feature), 1))
+            
+        return features.view(batch, burst_size, *features.size()[1:]).permute(1, 0, 2, 3, 4)
 
 
 class PCDAlignExtractor(nn.Module):
