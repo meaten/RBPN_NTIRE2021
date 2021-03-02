@@ -144,6 +144,7 @@ class DeformableExtractor(nn.Module):
 
         if self.use_flow:
             self.deform_conv = DCN_ID(base_filter, base_filter, base_filter*2 + 2, kernel_size=3, stride=1, padding=1)
+            self.size_adjuster = nn.Upsample(scale_factor=0.5)
         else:
             self.deform_conv = DCN_ID(base_filter, base_filter, base_filter*2, kernel_size=3, stride=1, padding=1)
 
