@@ -23,7 +23,7 @@ class OriginalExtractor(nn.Module):
         features = [self.feat0(x[:, 0, :, :, :])]
         for j in range(1, x.shape[1]):
             if self.use_flow:
-                features.append(self.feat1(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :], self.size_adjuster[j]), 1)))
+                features.append(self.feat1(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :], self.size_adjuster(flow[j])), 1)))
             else:
                 features.append(self.feat1(torch.cat((x[:, 0, :, :, :], x[:, j, :, :, :]), 1)))
 
