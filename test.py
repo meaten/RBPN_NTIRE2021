@@ -69,7 +69,7 @@ def do_test_synthetic(args, cfg, model, device):
     
     mean_psnr = sum(scores_all) / len(scores_all)
 
-    with open(os.path.join(vis_dir, 'result_psnr.txt'), 'w') as f:
+    with open(os.path.join(cfg.OUTPUT_DIRNAME, 'result_psnr.txt'), 'w') as f:
         string = 'Mean PSNR is {:0.3f}\n'.format(mean_psnr.item())
         print(string)
         f.write(string)
@@ -101,7 +101,7 @@ def do_test_real(args, cfg, model, device):
     test_dataset = BurstSRDataset(cfg.DATASET.REAL, split='val', crop_sz=80, burst_size=14, random_flip=False)
     
     alignment_net = PWCNet(load_pretrained=True,
-                           weights_path=cfg.PWCNET_WEIGHT)
+                           weights_path=cfg.PWCNET_WEIGHTS)
     alignment_net = alignment_net.to(device)
     aligned_psnr_fn = AlignedPSNR_custom(alignment_net=alignment_net, boundary_ignore=40)
     
@@ -118,7 +118,9 @@ def do_test_real(args, cfg, model, device):
         net_pred = pred_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
         
         # Calculate Aligned PSNR
-        score, pred_warped_m, gt = aligned_psnr_fn(net_pred.unsqueeze(0), data_dict['gt_frame'].unsqueeze(0).to(device), data_dict['burst'].unsqueeze(0).to(device))
+        score, pred_warped_m, gt = aligned_psnr_fn(net_pred.unsqueeze(0),
+                                                   data_dict['gt_frame'].unsqueeze(0).to(device),
+                                                   data_dict['burst'].unsqueeze(0).to(device))
         scores_all.append(score)
         
         output_image = create_output_image(gt.squeeze(0), pred_warped_m.squeeze(0), score)
@@ -129,7 +131,7 @@ def do_test_real(args, cfg, model, device):
         
     mean_psnr = sum(scores_all) / len(scores_all)
 
-    with open(os.path.join(vis_dir, 'result_psnr.txt'), 'w') as f:
+    with open(os.path.join(cfg.OUTPUT_DIRNAME, 'result_psnr.txt'), 'w') as f:
         string = 'Mean PSNR is {:0.3f}'.format(mean_psnr.item())
         print(string)
         f.write(string)
@@ -142,19 +144,19 @@ def create_output_image(frame_gt, net_pred, psnr, burst):
     heatmap = cv2.applyColorMap(diff, cv2.COLORMAP_JET)
     
     net_pred = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
-    frame_gt = (frame_gt.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8) # (384,384,3)
+    frame_gt = (frame_gt.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)  # (384,384,3)
 
     alpha = 0.3
     heatmap_blended = cv2.addWeighted(frame_gt, alpha, heatmap, 1 - alpha, 0)
     
-    ### make rgb image from burst image
-    ### burst (14, 4, 48, 48), (num frame, channel, Height, Width)
-    rgb = burst[:,[0,1,3],:,:] # (14, 3, 48, 48)
-    base_rgb_image = rgb[:1,:,:,:] # (1, 3, 48, 48)
+    # make rgb image from burst image
+    # burst (14, 4, 48, 48), (num frame, channel, Height, Width)
+    rgb = burst[:, [0, 1, 3], :, :]  # (14, 3, 48, 48)
+    base_rgb_image = rgb[:1, :, :, :]  # (1, 3, 48, 48)
 
-    ### resize rgb image
+    # resize rgb image
     base_rgb_image_8x = torch.nn.functional.interpolate(base_rgb_image, scale_factor=8., mode='bilinear', align_corners=False)
-    base_rgb_image_8x_np = (base_rgb_image_8x[0,:,:,:].permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
+    base_rgb_image_8x_np = (base_rgb_image_8x[0, :, :, :].permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
 
     output_image = np.concatenate([frame_gt, net_pred, heatmap_blended, base_rgb_image_8x_np], axis=1)
     imtext(output_image, "GT", (10, 30), 1.5, 1, (0, 0, 0), (255, 255, 255))
@@ -177,9 +179,11 @@ def pred_ensemble(model, data_dict, num_frame, device):
     data_dict['burst'] = ensemble_burst
 
     with torch.no_grad():
-        net_pred = model.pred(data_dict)
-        net_pred = torch.mean(net_pred, axis=0)
-        
+        ret_dict = model.pred(data_dict)
+        net_pred = torch.mean(ret_dict['pred'], axis=0)
+    
+    data_dict['burst'] = burst
+    
     return net_pred.clamp(0.0, 1.0)
     
 

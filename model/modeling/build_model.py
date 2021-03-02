@@ -1,3 +1,4 @@
+from multiprocessing import Value
 import torch
 import torch.nn as nn
 
@@ -20,9 +21,11 @@ class ModelWithLoss(nn.Module):
         self.use_flow = cfg.MODEL.USE_FLOW
         if self.use_flow:
             self.build_flow_model(cfg)
-            self.flow_refine = cfg.MODEL.FLOW_REFINE
-            if self.flow_refine:
-                self.FR_model = UNet(3 * 2 + 2, 2)
+        self.flow_refine = cfg.MODEL.FLOW_REFINE
+        if self.flow_refine:
+            if not self.use_flow:
+                raise ValueError("need to use flow inputs")
+            self.FR_model = UNet(3 * 2 + 2, 2)
         self.model = RBPN(cfg)
         self.build_loss(cfg)
         
