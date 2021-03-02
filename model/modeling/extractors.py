@@ -149,19 +149,19 @@ class DeformableExtractor(nn.Module):
 
 
     def forward(self, x, flow=None):
-        input_features = []
-        for j in range(x.shape[1]):
-            input_features.append(self.init_conv(x[:, j, :, :, :]))
+        batch, burst_size, channel, height, width = x.shape
+        input_feature = self.init_conv(x.reshape(-1, channel, height, width))
+
+        input_feature_zero = input_feature.view(batch, burst_size, -1, height, width)[:, 0].unsqueeze(1).expand(-1, 8, -1, -1, -1).reshape(batch * burst_size, -1, height, width)
         
-        features = []
-        for j in range(x.shape[1]):
-            if self.use_flow:
-                features.append(self.deform_conv(input_features[j], torch.cat((input_features[0], input_features[j], flow[j]), 1)))
-            else:
-                features.append(self.deform_conv(input_features[j], torch.cat((input_features[0], input_features[j]), 1)))
-
-
-        return features
+        if self.use_flow:
+            features = self.deform_conv(input_feature, torch.cat([input_feature_zero,
+                                                                  input_feature,
+                                                                  self.size_adjuster(flow.reshape(-1, 2, height * 2, width * 2))], 1))
+        else:
+            features = self.deform_conv(input_feature, torch.cat((input_feature_zero, input_feature), 1))
+            
+        return features.view(batch, burst_size, *features.size()[1:]).permute(1, 0, 2, 3, 4)
 
 
 class DeepDeformableExtractor(nn.Module):
