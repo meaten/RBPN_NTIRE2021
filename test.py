@@ -32,6 +32,12 @@ def test(args, cfg):
     
     # model.load_state_dict(fix_model_state_dict(torch.load(args.trained_model)))
     model.model.load_state_dict(torch.load(args.trained_model))
+    if model.flow_refine:
+        FR_model_path = os.path.dirname(args.trained_model)[:-5] + "FR_model/" + os.path.basename(args.trained_model)
+        model.FR_model.load_state_dict(torch.load(FR_model_path))
+    if model.denoise_burst:
+        denoise_model_path = os.path.dirname(args.trained_model)[:-5] + "denoise_model/" + os.path.basename(args.trained_model)
+        model.denoise_model.load_state_dict(torch.load(denoise_model_path))
     model.cuda()
 
     print('Loading Datasets...')

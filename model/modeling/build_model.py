@@ -16,6 +16,7 @@ class ModelWithLoss(nn.Module):
         super(ModelWithLoss, self).__init__()
         self.flow_model = None
         
+        self.burst_size = cfg.MODEL.BURST_SIZE
         self.preprocess = Nearest()
 
         self.use_flow = cfg.MODEL.USE_FLOW
@@ -97,7 +98,8 @@ class ModelWithLoss(nn.Module):
         if self.denoise_burst and 'gt_denoised_burst' in data_dict:
             loss += 0.1 * self.l1(data_dict['denoised_burst'].cuda(), data_dict['gt_denoised_burst'].cuda()).cuda()
         if self.flow_refine and 'gt_flow' in data_dict:
-            loss += 0.1 * self.l1(torch.stack(data_dict['refined_flow']).cuda().permute([1, 0, 2, 3, 4]), data_dict['gt_flow'].cuda()).cuda()
+            loss += 0.01 / self.burst_size * self.l1(torch.stack(data_dict['refined_flow']).cuda().permute([1, 0, 2, 3, 4]),
+                                                     data_dict['gt_flow'].cuda()).cuda()
         return loss
             
     def recon_loss(self, pred, target, x):
