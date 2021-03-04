@@ -27,8 +27,8 @@ def do_train(args, cfg, model, optimizer, scheduler, data_loader, device, summar
             loss = loss.mean()
 
             loss.backward()
-
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
+            
+            torch.nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, model.parameters()), cfg.SOLVER.CLIP_GRAD_NORM)
             
             optimizer.step()
             scheduler.step()

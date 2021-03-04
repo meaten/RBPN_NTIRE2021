@@ -89,7 +89,7 @@ class ModelWithLoss(nn.Module):
         elif cfg.MODEL.LOSS == 'alignedl2':
             if not self.use_flow:
                 self.build_flow_model(cfg)
-            self.alignedl2 = AlignedL2(alignment_net=self.flow_model, sr_factor=4, boundary_ignore=10)
+            self.alignedl2 = AlignedL2(alignment_net=self.flow_model, sr_factor=4)
         elif cfg.MODEL.LOSS == 'pit':
             self.pit = PITLoss(cfg)
         else:

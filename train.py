@@ -83,13 +83,27 @@ def train(args, cfg):
     scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.LR, cfg.SOLVER.LR_STEP, warmup_factor=cfg.SOLVER.WARMUP_FACTOR, warmup_iters=cfg.SOLVER.WARMUP_ITER)
 
     if args.resume_iter != 0:
-        print('Resume from {}'.format(os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(args.resume_iter))))
+        model_path = os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(args.resume_iter))
+        print(f'Resume from {model_path}')
         model.model.load_state_dict(fix_model_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(args.resume_iter)))))
+        if model.flow_refine:
+            FR_model_path = os.path.dirname(model_path)[:-5] + "FR_model/" + os.path.basename(args.trained_model)
+            model.FR_model.load_state_dict(torch.load(FR_model_path))
+        if model.denoise_burst:
+            denoise_model_path = os.path.dirname(model_path)[:-5] + "denoise_model/" + os.path.basename(args.trained_model)
+            model.denoise_model.load_state_dict(torch.load(denoise_model_path))
         optimizer.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'optimizer', 'iteration_{}.pth'.format(args.resume_iter))))
         scheduler.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'scheduler', 'iteration_{}.pth'.format(args.resume_iter))))
     elif cfg.SOLVER.PRETRAIN_MODEL != '':
-        print(f'load pretrain model from {cfg.SOLVER.PRETRAIN_MODEL}')
-        model.model.load_state_dict(fix_model_state_dict(torch.load(cfg.SOLVER.PRETRAIN_MODEL)))
+        model_path = cfg.SOLVER.PRETRAIN_MODEL
+        print(f'load pretrain model from {model_path}')
+        model.model.load_state_dict(fix_model_state_dict(torch.load(model_path)))
+        if model.flow_refine:
+            FR_model_path = os.path.dirname(model_path)[:-5] + "FR_model/" + os.path.basename(args.trained_model)
+            model.FR_model.load_state_dict(torch.load(FR_model_path))
+        if model.denoise_burst:
+            denoise_model_path = os.path.dirname(model_path)[:-5] + "denoise_model/" + os.path.basename(args.trained_model)
+            model.denoise_model.load_state_dict(torch.load(denoise_model_path))
 
     if cfg.SOLVER.SYNC_BATCHNORM:
         model = convert_model(model).to(device)

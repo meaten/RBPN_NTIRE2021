@@ -388,7 +388,7 @@ class BurstSRDataset(torch.utils.data.Dataset):
                 
         ret_dic = {
             'burst': burst,
-            'frame_gt': frame_gt,
+            'gt_frame': frame_gt,
             'meta': [meta_info_burst, meta_info_gt]
         }
 
