@@ -87,10 +87,10 @@ def train(args, cfg):
         print(f'Resume from {model_path}')
         model.model.load_state_dict(fix_model_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'model', 'iteration_{}.pth'.format(args.resume_iter)))))
         if model.flow_refine:
-            FR_model_path = os.path.dirname(model_path)[:-5] + "FR_model/" + os.path.basename(args.trained_model)
+            FR_model_path = os.path.dirname(model_path)[:-5] + "FR_model/" + 'iteration_{}.pth'.format(args.resume_iter)
             model.FR_model.load_state_dict(torch.load(FR_model_path))
         if model.denoise_burst:
-            denoise_model_path = os.path.dirname(model_path)[:-5] + "denoise_model/" + os.path.basename(args.trained_model)
+            denoise_model_path = os.path.dirname(model_path)[:-5] + "denoise_model/" + 'iteration_{}.pth'.format(args.resume_iter)
             model.denoise_model.load_state_dict(torch.load(denoise_model_path))
         optimizer.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'optimizer', 'iteration_{}.pth'.format(args.resume_iter))))
         scheduler.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'scheduler', 'iteration_{}.pth'.format(args.resume_iter))))
@@ -99,10 +99,10 @@ def train(args, cfg):
         print(f'load pretrain model from {model_path}')
         model.model.load_state_dict(fix_model_state_dict(torch.load(model_path)))
         if model.flow_refine:
-            FR_model_path = os.path.dirname(model_path)[:-5] + "FR_model/" + os.path.basename(args.trained_model)
+            FR_model_path = os.path.dirname(model_path)[:-5] + "FR_model/" + os.path.basename(cfg.SOLVER.PRETRAIN_MODEL)
             model.FR_model.load_state_dict(torch.load(FR_model_path))
         if model.denoise_burst:
-            denoise_model_path = os.path.dirname(model_path)[:-5] + "denoise_model/" + os.path.basename(args.trained_model)
+            denoise_model_path = os.path.dirname(model_path)[:-5] + "denoise_model/" + os.path.basename(cfg.SOLVER.PRETRAIN_MODEL)
             model.denoise_model.load_state_dict(torch.load(denoise_model_path))
 
     if cfg.SOLVER.SYNC_BATCHNORM:
