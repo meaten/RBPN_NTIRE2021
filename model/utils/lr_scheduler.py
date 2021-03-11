@@ -10,11 +10,15 @@ class WarmupMultiStepLR(MultiStepLR):
         super().__init__(optimizer, milestones, gamma, last_epoch)
 
     def get_lr(self):
-        # lr = super().get_lr()
-        lr = self.init_lr
-        if self.last_epoch < self.warmup_iters:
+        if self.last_epoch <= self.warmup_iters:
+            lr = self.init_lr
             alpha = self.last_epoch / self.warmup_iters
             warmup_factor = self.warmup_factor * (1 - alpha) + alpha
             return [l * warmup_factor for l in lr]
-        return lr
 
+        if self.last_epoch not in self.milestones:
+            return [group['lr'] for group in self.optimizer.param_groups]
+        
+        return [group['lr'] * self.gamma ** self.milestones[self.last_epoch]
+                for group in self.optimizer.param_groups]
+                
