@@ -56,6 +56,29 @@ def do_test_synthetic(args, cfg, model, device):
     
     psnr_fn = PSNR()
     
+    if args.submit:
+        test_dataset = SyntheticBurstVal(cfg.DATASET.VAL_SYNTHETIC)
+    
+        submit_dir = os.path.join(cfg.OUTPUT_DIRNAME, "submit")
+        os.makedirs(submit_dir, exist_ok=True)
+    
+        print(f"test on validation data at {cfg.DATASET.VAL_SYNTHETIC}...")
+        for idx in tqdm(range(len(test_dataset))):
+            data_dict = test_dataset[idx]
+            burst_name = data_dict['burst_name']
+            
+            net_pred = pred_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+            
+            # Normalize to 0  2^14 range and convert to numpy array
+            net_pred_submit = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 14)).cpu().numpy().astype(np.uint16)
+            
+            # Save predictions as png
+            cv2.imwrite(os.path.join(submit_dir, '{}.png'.format(burst_name)), net_pred_submit)
+            
+        import shutil
+        shutil.make_archive(os.path.join(cfg.OUTPUT_DIRNAME, "submit"), 'zip', root_dir=submit_dir)
+        return
+    
     print(f"visualize heatmaps on the validation data at {cfg.DATASET.TRAIN_SYNTHETIC}/test...")
     scores_all = []
     for idx in tqdm(range(len(test_dataset))):
@@ -79,28 +102,6 @@ def do_test_synthetic(args, cfg, model, device):
         string = 'Mean PSNR is {:0.3f}\n'.format(mean_psnr.item())
         print(string)
         f.write(string)
-    
-    if args.submit:
-        test_dataset = SyntheticBurstVal(cfg.DATASET.VAL_SYNTHETIC)
-    
-        submit_dir = os.path.join(cfg.OUTPUT_DIRNAME, "submit")
-        os.makedirs(submit_dir, exist_ok=True)
-    
-        print(f"test on validation data at {cfg.DATASET.VAL_SYNTHETIC}...")
-        for idx in tqdm(range(len(test_dataset))):
-            data_dict = test_dataset[idx]
-            burst_name = data_dict['burst_name']
-            
-            net_pred = pred_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
-            
-            # Normalize to 0  2^14 range and convert to numpy array
-            net_pred_submit = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 14)).cpu().numpy().astype(np.uint16)
-            
-            # Save predictions as png
-            cv2.imwrite(os.path.join(submit_dir, '{}.png'.format(burst_name)), net_pred_submit)
-            
-        import shutil
-        shutil.make_archive(os.path.join(cfg.OUTPUT_DIRNAME, "submit"), 'zip', root_dir=submit_dir)
         
     
 def do_test_real(args, cfg, model, device):
@@ -128,8 +129,7 @@ def do_test_real(args, cfg, model, device):
                                                    data_dict['gt_frame'].unsqueeze(0).to(device),
                                                    data_dict['burst'].unsqueeze(0).to(device))
         scores_all.append(score)
-        
-        output_image = create_output_image(gt.squeeze(0), pred_warped_m.squeeze(0), score)
+        output_image = create_output_image(gt.squeeze(0), pred_warped_m.squeeze(0), score, data_dict['burst'])
             
         # Save predictions as png
         name = str(idx).zfill(len(str(len(test_dataset))))
@@ -163,6 +163,7 @@ def create_output_image(frame_gt, net_pred, psnr, burst):
     # resize rgb image
     base_rgb_image_8x = torch.nn.functional.interpolate(base_rgb_image, scale_factor=8., mode='bilinear', align_corners=False)
     base_rgb_image_8x_np = (base_rgb_image_8x[0, :, :, :].permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
+    base_rgb_image_8x_np = center_crop(base_rgb_image_8x_np, frame_gt.shape)
 
     output_image = np.concatenate([frame_gt, net_pred, heatmap_blended, base_rgb_image_8x_np], axis=1)
     imtext(output_image, "GT", (10, 30), 1.5, 1, (0, 0, 0), (255, 255, 255))
@@ -171,6 +172,23 @@ def create_output_image(frame_gt, net_pred, psnr, burst):
     imtext(output_image, "Bilinear", (10 + 3 * net_pred.shape[0], 30), 1.5, 1, (0, 0, 0), (255, 255, 255))
 
     return output_image
+
+
+def center_crop(img, shape):
+    #  assume the shape of img is (h, w, c)
+    img_shape = img.shape
+    assert img_shape[2] == shape[2]
+    if img_shape == shape:
+        return img
+    else:
+        h_diff = img_shape[0] - shape[0]
+        w_diff = img_shape[1] - shape[1]
+        assert h_diff > 0 and w_diff > 0
+        h_ignr = int(h_diff / 2)
+        w_ignr = int(w_diff / 2)
+        img = img[h_ignr:-h_ignr, w_ignr:-w_ignr]
+        assert img.shape == shape
+        return img
     
     
 def pred_ensemble(model, data_dict, num_frame, device):

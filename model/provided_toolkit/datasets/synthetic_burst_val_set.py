@@ -37,7 +37,7 @@ class SyntheticBurstVal(torch.utils.data.Dataset):
         
         ret_dic = {
             "burst": burst,
-            "name": burst_name
+            "burst_name": burst_name
         }
 
         return ret_dic
