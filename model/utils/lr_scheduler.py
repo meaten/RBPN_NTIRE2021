@@ -21,4 +21,3 @@ class WarmupMultiStepLR(MultiStepLR):
         
         return [group['lr'] * self.gamma ** self.milestones[self.last_epoch]
                 for group in self.optimizer.param_groups]
-                
