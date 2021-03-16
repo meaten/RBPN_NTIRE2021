@@ -66,7 +66,7 @@ def do_val_synthetic(args, cfg, model, device):
             data_dict = val_dataset[idx]
             burst_name = data_dict['burst_name']
             
-            net_pred = pred_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+            net_pred = self_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
             
             # Normalize to 0  2^14 range and convert to numpy array
             net_pred_submit = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 14)).cpu().numpy().astype(np.uint16)
@@ -83,7 +83,7 @@ def do_val_synthetic(args, cfg, model, device):
     for idx in tqdm(range(len(val_dataset))):
         data_dict = val_dataset[idx]
         
-        net_pred = pred_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+        net_pred = self_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
         gt_frame = data_dict['gt_frame'].to(device)
         psnr = psnr_fn(net_pred.unsqueeze(0), gt_frame.unsqueeze(0)).cpu().numpy()
         scores_all.append(psnr)
@@ -93,7 +93,7 @@ def do_val_synthetic(args, cfg, model, device):
         # Save predictions as png
         name = name = str(idx).zfill(len(str(len(val_dataset))))
         cv2.imwrite(os.path.join(vis_dir, '{}.png'.format(name)), output_image)
-    
+        print(psnr)
     mean_psnr = sum(scores_all) / len(scores_all)
 
     with open(os.path.join(cfg.OUTPUT_DIRNAME, 'result_psnr.txt'), 'w') as f:
@@ -120,7 +120,7 @@ def do_val_real(args, cfg, model, device):
     for idx in tqdm(range(len(val_dataset)), total=len(val_dataset)):
         data_dict = val_dataset[idx]
         
-        net_pred = pred_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+        net_pred = self_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
         
         # Calculate Aligned PSNR
         score, pred_warped_m, gt = aligned_psnr_fn(net_pred.unsqueeze(0),
@@ -132,7 +132,7 @@ def do_val_real(args, cfg, model, device):
         # Save predictions as png
         name = str(idx).zfill(len(str(len(val_dataset))))
         cv2.imwrite(os.path.join(vis_dir, '{}.png'.format(name)), output_image)
-        
+        print(score)
     mean_psnr = sum(scores_all) / len(scores_all)
 
     with open(os.path.join(cfg.OUTPUT_DIRNAME, 'result_psnr.txt'), 'w') as f:
@@ -189,13 +189,69 @@ def center_crop(img, shape):
         return img
     
     
-def pred_ensemble(model, data_dict, num_frame, device):
+def self_ensemble(model, data_dict, num_frame, device):
+    from itertools import product
+    from copy import deepcopy
+    # list_angle = list(range(4))
+    list_angle = [0] * 4
+    # list_flip = [True, False]
+    list_flip = [False, False]
+    
+    burst = data_dict['burst']
+    n_ensemble = len(list_angle) * len(list_flip)
+    ensemble_burst = [deepcopy(data_dict) for _ in range(n_ensemble)]
+    for i, (angle, flip) in enumerate(product(list_angle, list_flip)):
+        ensemble_burst[i]['burst'] = rotate_image(flip_image(deepcopy(burst), flip=flip), angle=angle)
+        # aug = rotate_image(flip_image(deepcopy(burst), flip=flip), angle=angle)
+        # assert (burst == flip_image(rotate_image(deepcopy(aug), angle=-angle), flip=flip)).all()
+        
+    net_pred = [burst_ensemble(model, dic, num_frame, device) for dic in ensemble_burst]
+    
+    for i, (angle, flip) in enumerate(product(list_angle, list_flip)):
+        net_pred[i] = flip_image(rotate_image(net_pred[i], angle=-angle), flip=flip)
+    
+    net_pred = torch.mean(torch.stack(net_pred), axis=0)
+    
+    return net_pred.clamp(0.0, 1.0)
+
+
+def flip_image(image, flip=True):
+    if flip:
+        if len(image.shape) == 3:
+            channel, height, width = image.shape
+            image = image[:, :, torch.arange(width - 1, -1, -1)]
+    
+        elif len(image.shape) == 4:
+            for i in range(len(image)):
+                channel, height, width = image[i].shape
+                image[i] = image[i][:, :, torch.arange(width - 1, -1, -1)]
+        else:
+            raise ValueError
+                
+    return image
+            
+    
+def rotate_image(image, angle=1):
+    if angle:
+        if len(image.shape) == 3:
+            image = torch.rot90(image, angle, [1, 2])
+        
+        elif len(image.shape) == 4:
+            for i in range(len(image)):
+                image[i] = torch.rot90(image[i], angle, [1, 2])
+        else:
+            raise ValueError
+                            
+    return image
+    
+    
+def burst_ensemble(model, data_dict, num_frame, device):
     burst = data_dict['burst']
     shape = burst.shape
     burst_size = shape[0]
     n_ensemble = burst_size - num_frame + 1
     ensemble_burst = torch.zeros([n_ensemble, num_frame, *shape[1:]]).to(device)
-    for i, ens_idx in enumerate(get_ensemble_idx(burst_size=burst_size, num_frame=num_frame)):
+    for i, ens_idx in enumerate(get_burst_ensemble_idx(burst_size=burst_size, num_frame=num_frame)):
         ensemble_burst[i] = burst[ens_idx]
     ensemble_burst.to(device)
     data_dict['burst'] = ensemble_burst
@@ -209,7 +265,7 @@ def pred_ensemble(model, data_dict, num_frame, device):
     return net_pred.clamp(0.0, 1.0)
     
 
-def get_ensemble_idx(burst_size=14, num_frame=8):
+def get_burst_ensemble_idx(burst_size=14, num_frame=8):
     n_ensemble = burst_size - num_frame + 1
     ensemble_idx = np.array([np.arange(idx, idx + num_frame) for idx in range(n_ensemble)])
     ensemble_idx[:, 0] = 0

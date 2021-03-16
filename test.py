@@ -11,6 +11,8 @@ from model.modeling.build_model import ModelWithLoss
 from model.provided_toolkit.datasets.synthetic_burst_test_set import SyntheticBurstVal
 from model.provided_toolkit.datasets.burstsr_test_dataset import BurstSRDataset
 
+from val import self_ensemble
+
 
 def parse_args() -> None:
     parser = argparse.ArgumentParser(description='')
@@ -51,7 +53,7 @@ def do_test_synthetic(args, cfg, model, device):
         data_dict = test_dataset[idx]
         burst_name = data_dict['burst_name']
         
-        net_pred = pred_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+        net_pred = self_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
         
         # Normalize to 0  2^14 range and convert to numpy array
         net_pred_submit = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 14)).cpu().numpy().astype(np.uint16)
@@ -74,7 +76,7 @@ def do_test_real(args, cfg, model, device):
     for idx in tqdm(range(len(test_dataset)), total=len(test_dataset)):
         data_dict = test_dataset[idx]
         
-        net_pred = pred_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+        net_pred = self_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
         
         # Normalize to 0  2^14 range and convert to numpy array
         net_pred_submit = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 14)).cpu().numpy().astype(np.uint16)
@@ -86,43 +88,6 @@ def do_test_real(args, cfg, model, device):
     import shutil
     shutil.make_archive(os.path.join(cfg.OUTPUT_DIRNAME, "test_submit"), 'zip', root_dir=submit_dir)
     return
-    
-    
-def pred_ensemble(model, data_dict, num_frame, device):
-    burst = data_dict['burst']
-    shape = burst.shape
-    burst_size = shape[0]
-    n_ensemble = burst_size - num_frame + 1
-    ensemble_burst = torch.zeros([n_ensemble, num_frame, *shape[1:]]).to(device)
-    for i, ens_idx in enumerate(get_ensemble_idx(burst_size=burst_size, num_frame=num_frame)):
-        ensemble_burst[i] = burst[ens_idx]
-    ensemble_burst.to(device)
-    data_dict['burst'] = ensemble_burst
-
-    with torch.no_grad():
-        ret_dict = model.pred(data_dict)
-        net_pred = torch.mean(ret_dict['pred'], axis=0)
-    
-    data_dict['burst'] = burst
-    
-    return net_pred.clamp(0.0, 1.0)
-    
-
-def get_ensemble_idx(burst_size=14, num_frame=8):
-    n_ensemble = burst_size - num_frame + 1
-    ensemble_idx = np.array([np.arange(idx, idx + num_frame) for idx in range(n_ensemble)])
-    ensemble_idx[:, 0] = 0
-    
-    return ensemble_idx
-
-
-def imtext(img, msg, r, size, thickness, col, bgcol):
-    cv2.putText(img, msg, r,
-                cv2.FONT_HERSHEY_PLAIN, size,
-                bgcol, int(4 * thickness), 1)
-    cv2.putText(img, msg, r,
-                cv2.FONT_HERSHEY_PLAIN, size,
-                col, thickness, 1)
 
 
 def main():
