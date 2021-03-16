@@ -132,5 +132,10 @@ class BurstSRDataset(torch.utils.data.Dataset):
         for k, v in meta_info_burst.items():
             if isinstance(v, (list, tuple)):
                 meta_info_burst[k] = torch.tensor(v)
+                
+        ret_dic = {
+            "burst": burst,
+            "meta": meta_info_burst
+        }
 
-        return burst, meta_info_burst
+        return ret_dic

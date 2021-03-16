@@ -43,6 +43,7 @@ _C.DATASET = CN()
 _C.DATASET.TRACK = 'synthetic'
 _C.DATASET.TRAIN_SYNTHETIC = 'dataset/Zurich'
 _C.DATASET.VAL_SYNTHETIC = 'dataset/syn_burst_val'
+_C.DATASET.TEST_SYNTHETIC = 'dataset/syn_burst_test'
 _C.DATASET.REAL = 'dataset/burstsr_dataset'
 
 _C.PWCNET_WEIGHTS = 'weights/pwcnet-network-default.pth'
