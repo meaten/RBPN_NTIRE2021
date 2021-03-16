@@ -2,6 +2,7 @@ from torchvision.transforms import ToTensor
 
 from .transforms import *
 
+
 class SyntheticTransforms(object):
     def __init__(self):
         self.transform = Compose([

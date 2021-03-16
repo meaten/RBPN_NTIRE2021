@@ -29,10 +29,10 @@ class RandomFlip(object):
         if random.randint(0, 1):
             if type(image) is not list:
                 channel, height, width = image.shape
-                image = image[:, :, torch.arange(width-1)]
+                image = image[:, :, torch.arange(width-1, -1, -1)]
             else:
                 for i in range(len(image)):
                     channel, height, width = image[i].shape
-                    image[i] = image[i][:, :, torch.arange(width-1)]
+                    image[i] = image[i][:, :, torch.arange(width-1, -1, -1)]
 
         return image
