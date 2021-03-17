@@ -23,11 +23,11 @@ class OriginalExtractor(nn.Module):
         init_feature = self.feat0(x[:, 0, :, :, :])
         batch, burst_size, channel, height, width = x.shape
         if self.use_flow:
-            features = self.feat1(torch.cat([x[:, 0, :, :, :].unsqueeze(1).expand(-1, 8, -1, -1, -1).reshape(-1, channel, height, width),
+            features = self.feat1(torch.cat([x[:, 0, :, :, :].unsqueeze(1).expand(-1, burst_size, -1, -1, -1).reshape(-1, channel, height, width),
                                              x.reshape(-1, channel, height, width),
                                              self.size_adjuster(flow.view(-1, 2, height * 2, width * 2))], 1)).view(batch, burst_size, -1, height, width)
         else:
-            features = self.feat1(torch.cat([x[:, 0, :, :, :].unsqueeze(1).expand(-1, 8, -1, -1, -1).reshape(-1, channel, height, width),
+            features = self.feat1(torch.cat([x[:, 0, :, :, :].unsqueeze(1).expand(-1, burst_size, -1, -1, -1).reshape(-1, channel, height, width),
                                              x.reshape(-1, channel, height, width)], 1)).view(batch, burst_size, -1, height, width)
         features[:, 0] = init_feature
 
@@ -123,7 +123,7 @@ class DeepExtractor_fixup_init(nn.Module):
         batch, burst_size, channel, height, width = x.shape
         input_feature = self.init_conv(x.reshape(-1, channel, height, width))
 
-        input_feature_zero = input_feature.view(batch, burst_size, -1, height, width)[:, 0].unsqueeze(1).expand(-1, 8, -1, -1, -1).reshape(batch * burst_size, -1, height, width)
+        input_feature_zero = input_feature.view(batch, burst_size, -1, height, width)[:, 0].unsqueeze(1).expand(-1, burst_size, -1, -1, -1).reshape(batch * burst_size, -1, height, width)
         
         if self.use_flow:
             features = self.merge_conv(torch.cat([input_feature_zero,
@@ -149,12 +149,11 @@ class DeformableExtractor(nn.Module):
         else:
             self.deform_conv = DCN_ID(base_filter, base_filter, base_filter*2, kernel_size=3, stride=1, padding=1)
 
-
     def forward(self, x, flow=None):
         batch, burst_size, channel, height, width = x.shape
         input_feature = self.init_conv(x.reshape(-1, channel, height, width))
 
-        input_feature_zero = input_feature.view(batch, burst_size, -1, height, width)[:, 0].unsqueeze(1).expand(-1, 8, -1, -1, -1).reshape(batch * burst_size, -1, height, width)
+        input_feature_zero = input_feature.view(batch, burst_size, -1, height, width)[:, 0].unsqueeze(1).expand(-1, burst_size, -1, -1, -1).reshape(batch * burst_size, -1, height, width)
         
         if self.use_flow:
             features = self.deform_conv(input_feature, torch.cat([input_feature_zero,
@@ -188,7 +187,7 @@ class DeepDeformableExtractor(nn.Module):
         batch, burst_size, channel, height, width = x.shape
         input_feature = self.init_conv(x.reshape(-1, channel, height, width))
 
-        input_feature_zero = input_feature.view(batch, burst_size, -1, height, width)[:, 0].unsqueeze(1).expand(-1, 8, -1, -1, -1).reshape(batch * burst_size, -1, height, width)
+        input_feature_zero = input_feature.view(batch, burst_size, -1, height, width)[:, 0].unsqueeze(1).expand(-1, burst_size, -1, -1, -1).reshape(batch * burst_size, -1, height, width)
         
         if self.use_flow:
             features = self.deform_conv(input_feature, torch.cat([input_feature_zero,
