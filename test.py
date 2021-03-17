@@ -9,9 +9,9 @@ import torch
 from model.config import cfg
 from model.modeling.build_model import ModelWithLoss
 from model.provided_toolkit.datasets.synthetic_burst_test_set import SyntheticBurstVal
-from model.provided_toolkit.datasets.burstsr_test_dataset import BurstSRDataset
+from model.provided_toolkit.datasets.burstsr_test_dataset import BurstSRTestDataset
 
-from val import self_ensemble
+from val import self_ensemble, burst_ensemble
 
 
 def parse_args() -> None:
@@ -53,7 +53,7 @@ def do_test_synthetic(args, cfg, model, device):
         data_dict = test_dataset[idx]
         burst_name = data_dict['burst_name']
         
-        net_pred = self_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+        net_pred = burst_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
         
         # Normalize to 0  2^14 range and convert to numpy array
         net_pred_submit = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 14)).cpu().numpy().astype(np.uint16)
@@ -67,7 +67,7 @@ def do_test_synthetic(args, cfg, model, device):
         
     
 def do_test_real(args, cfg, model, device):
-    test_dataset = BurstSRDataset(cfg.DATASET.REAL, split='test', crop_sz=80, burst_size=14, random_flip=False)
+    test_dataset = BurstSRTestDataset(cfg.DATASET.REAL, split='test', crop_sz=80, burst_size=14, random_flip=False)
     
     submit_dir = os.path.join(cfg.OUTPUT_DIRNAME, "test_submit")
     os.makedirs(submit_dir, exist_ok=True)
@@ -75,15 +75,15 @@ def do_test_real(args, cfg, model, device):
     print(f"testing and visualizing on validation data at {cfg.DATASET.REAL}/test...")
     for idx in tqdm(range(len(test_dataset)), total=len(test_dataset)):
         data_dict = test_dataset[idx]
+        burst_name = data_dict['meta']['burst_name']
         
-        net_pred = self_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+        net_pred = burst_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
         
         # Normalize to 0  2^14 range and convert to numpy array
         net_pred_submit = (net_pred.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 14)).cpu().numpy().astype(np.uint16)
         
         # Save predictions as png
-        name = name = str(idx).zfill(len(str(len(test_dataset))))
-        cv2.imwrite(os.path.join(submit_dir, '{}.png'.format(name)), net_pred_submit)
+        cv2.imwrite(os.path.join(submit_dir, '{}.png'.format(burst_name)), net_pred_submit)
         
     import shutil
     shutil.make_archive(os.path.join(cfg.OUTPUT_DIRNAME, "test_submit"), 'zip', root_dir=submit_dir)
