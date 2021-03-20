@@ -43,7 +43,7 @@ class ModelWithLoss(nn.Module):
     def pred(self, data_dict):
         burst = data_dict['burst']
         burst = burst.cuda()
-        
+      
         if self.denoise_burst:
             size = burst.size()
             burst = burst + self.denoise_model(burst.view(-1, *size[2:])).view(size)

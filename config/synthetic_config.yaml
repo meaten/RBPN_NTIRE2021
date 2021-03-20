@@ -1,0 +1,6 @@
+DATASET:
+  TRACK: 'synthetic'
+  TRAIN_SYNTHETIC: 'dataset/Zurich' # Write the path to Zurich RAW to RGB dataset
+  TEST_SYNTHETIC: 'dataset/syn_burst_test' # Write the path to synthetic test set
+
+OUTPUT_DIR: 'output/synthetic'

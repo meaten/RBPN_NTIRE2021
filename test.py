@@ -25,10 +25,21 @@ def test(args, cfg):
     device = torch.device('cuda')
     model = ModelWithLoss(cfg).to(device)
     
-    model.model.load_state_dict(torch.load(args.trained_model))
-    if model.flow_refine:
-        FR_model_path = os.path.dirname(args.trained_model)[:-5] + "FR_model/" + os.path.basename(args.trained_model)
-        model.FR_model.load_state_dict(torch.load(FR_model_path))
+    if cfg.DATASET.TRACK == 'synthetic':
+        model.model.load_state_dict(torch.load(cfg.SYNTHETIC_MODEL))
+        if model.flow_refine:
+            # FR_model_path = os.path.dirname(args.trained_model)[:-5] + "FR_model/" + os.path.basename(args.trained_model)
+            FR_model_path = cfg.SYNTHETIC_FRMODEL
+            model.FR_model.load_state_dict(torch.load(FR_model_path))
+
+    elif cfg.DATASET.TRACK == 'real':
+        model.model.load_state_dict(torch.load(cfg.REAL_MODEL))
+        if model.flow_refine:
+            # FR_model_path = os.path.dirname(args.trained_model)[:-5] + "FR_model/" + os.path.basename(args.trained_model)
+            FR_model_path = cfg.REAL_FRMODEL
+            model.FR_model.load_state_dict(torch.load(FR_model_path))
+
+    
     if model.denoise_burst:
         denoise_model_path = os.path.dirname(args.trained_model)[:-5] + "denoise_model/" + os.path.basename(args.trained_model)
         model.denoise_model.load_state_dict(torch.load(denoise_model_path))
@@ -45,7 +56,8 @@ def test(args, cfg):
 def do_test_synthetic(args, cfg, model, device):
     test_dataset = SyntheticBurstVal(cfg.DATASET.TEST_SYNTHETIC)
     
-    submit_dir = os.path.join(cfg.OUTPUT_DIRNAME, "test_submit")
+    # submit_dir = os.path.join(cfg.OUTPUT_DIRNAME, "test_submit")
+    submit_dir = cfg.OUTPUT_DIRNAME
     os.makedirs(submit_dir, exist_ok=True)
 
     print(f"testing on validation data at {cfg.DATASET.TEST_SYNTHETIC}...")
@@ -69,7 +81,8 @@ def do_test_synthetic(args, cfg, model, device):
 def do_test_real(args, cfg, model, device):
     test_dataset = BurstSRDataset(cfg.DATASET.REAL, split='test', crop_sz=80, burst_size=14, random_flip=False)
     
-    submit_dir = os.path.join(cfg.OUTPUT_DIRNAME, "test_submit")
+    # submit_dir = os.path.join(cfg.OUTPUT_DIRNAME, "test_submit")
+    submit_dir = cfg.OUTPUT_DIRNAME
     os.makedirs(submit_dir, exist_ok=True)
     
     print(f"testing and visualizing on validation data at {cfg.DATASET.REAL}/test...")
@@ -97,7 +110,8 @@ def main():
         print('Configuration file is loaded from {}'.format(args.config_file))
         cfg.merge_from_file(args.config_file)
 
-    output_dirname = os.path.join('output', "images", os.path.splitext(args.trained_model)[0])
+    # output_dirname = os.path.join('output', "images", os.path.splitext(args.trained_model)[0])
+    output_dirname = os.path.join('output', cfg.DATASET.TRACK)
     os.makedirs(output_dirname, exist_ok=True)
     cfg.OUTPUT_DIRNAME = output_dirname
     cfg.freeze()

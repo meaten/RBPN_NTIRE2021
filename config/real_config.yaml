@@ -1,0 +1,14 @@
+MODEL:
+  LOSS: 'alignedl2'
+SOLVER:
+  CLIP_GRAD_NORM: 0.1
+  PATCH_SIZE: 272
+  BATCH_SIZE: 3
+  PRETRAIN_MODEL: 'weights/pretrained_models/model.pth'
+  PRETRAIN_FRMODEL: 'weights/pretrained_models/FR_model.pth'
+
+DATASET:
+  TRACK: 'real'
+  REAL: 'dataset/burstsr_dataset' # Write the path to BurstSR dataset
+
+OUTPUT_DIR: 'output/real'

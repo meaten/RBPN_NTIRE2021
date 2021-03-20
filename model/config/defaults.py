@@ -12,7 +12,7 @@ _C.MODEL.USE_FLOW = True
 # _C.MODEL.INPUT_CHANNEL = 3
 _C.MODEL.PREPROCESS = "RGGB2channel"  # 'Nearest' or 'RGGB2channel'
 _C.MODEL.OUTPUT_CHANNEL = 3
-_C.MODEL.EXTRACTOR_TYPE = 'original'  # 'original', 'deep', 'deform', 'deepdeform', 'pcd_align'
+_C.MODEL.EXTRACTOR_TYPE = 'deform'  # 'original', 'deep', 'deform', 'deepdeform', 'pcd_align'
 _C.MODEL.LOSS = 'l1'  # 'l1', 'pit' or 'alignedl2'
 _C.MODEL.NUM_RESIDUAL = 20
 _C.MODEL.FIXUP_INIT = True
@@ -30,6 +30,7 @@ _C.SOLVER.SYNC_BATCHNORM = False
 _C.SOLVER.PATCH_SIZE = 128
 _C.SOLVER.LR_STEP = [750000, 900000]
 _C.SOLVER.PRETRAIN_MODEL = ''
+_C.SOLVER.PRETRAIN_FRMODEL = ''
 _C.SOLVER.WARMUP_FACTOR = 1.0
 _C.SOLVER.WARMUP_ITER = 500
 _C.SOLVER.AUGMENTATION = True
@@ -47,6 +48,10 @@ _C.DATASET.TEST_SYNTHETIC = 'dataset/syn_burst_test'
 _C.DATASET.REAL = 'dataset/burstsr_dataset'
 
 _C.PWCNET_WEIGHTS = 'weights/pwcnet-network-default.pth'
+_C.SYNTHETIC_MODEL = 'weights/synthetic_model.pth'
+_C.SYNTHETIC_FRMODEL = 'weights/synthetic_FRmodel.pth'
+_C.REAL_MODEL = 'weights/real_model.pth'
+_C.REAL_FRMODEL = 'weights/real_FRmodel.pth'
 
 _C.OUTPUT_DIR = ''
 _C.SEED = 123

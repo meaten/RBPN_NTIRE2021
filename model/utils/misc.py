@@ -2,6 +2,7 @@ from collections import OrderedDict
 import numpy as np
 from PIL import Image
 import os
+import cv2
 
 def str2bool(s):
     return s.lower() in ('true', '1')
@@ -15,6 +16,24 @@ def fix_model_state_dict(state_dict):
             name = name[7:]
         new_state_dict[name] = v
     return new_state_dict
+
+
+def flow2color(flow):
+    height, width, _ = flow.shape
+    hsv = np.zeros((height, width, 3), dtype=np.uint8)
+    hsv[..., 1] = 255
+
+    mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+    hsv[..., 0] = ang*180 / np.pi / 2
+    # hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+    mag = mag*10/ 1.4128270298619277
+    # print(mag.min(), mag.max())
+    # mag = mag*255 / (1.4128270298619277 * 4)
+    # mag = mag*255 / 6.0094142822647285
+    hsv[..., 2] = np.clip(mag, 0, 255)
+    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    
+    return bgr
 
 
 class SaveTorchImage(object):

@@ -3,8 +3,11 @@ import os
 import numpy as np
 import cv2
 from tqdm import tqdm
+import random
 
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 from model.config import cfg
 from model.modeling.build_model import ModelWithLoss
@@ -16,6 +19,8 @@ from model.provided_toolkit.datasets.burstsr_dataset import BurstSRDataset
 
 from model.provided_toolkit.utils.metrics import AlignedPSNR_custom, PSNR
 from model.provided_toolkit.pwcnet.pwcnet import PWCNet
+
+from model.utils.misc import SaveTorchImage, flow2color
 
 
 def parse_args() -> None:
@@ -40,6 +45,7 @@ def val(args, cfg):
         model.denoise_model.load_state_dict(torch.load(denoise_model_path))
     model.cuda()
 
+    model.eval()
     print('Loading Datasets...')
     if cfg.DATASET.TRACK == 'synthetic':
         do_val_synthetic(args, cfg, model, device)
@@ -84,6 +90,7 @@ def do_val_synthetic(args, cfg, model, device):
         data_dict = val_dataset[idx]
         
         net_pred = self_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+        # net_pred = burst_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
         gt_frame = data_dict['gt_frame'].to(device)
         psnr = psnr_fn(net_pred.unsqueeze(0), gt_frame.unsqueeze(0)).cpu().numpy()
         scores_all.append(psnr)
@@ -120,7 +127,8 @@ def do_val_real(args, cfg, model, device):
     for idx in tqdm(range(len(val_dataset)), total=len(val_dataset)):
         data_dict = val_dataset[idx]
         
-        net_pred = self_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+        # net_pred = self_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
+        net_pred = burst_ensemble(model, data_dict, cfg.MODEL.BURST_SIZE, device)
         
         # Calculate Aligned PSNR
         score, pred_warped_m, gt = aligned_psnr_fn(net_pred.unsqueeze(0),
@@ -193,26 +201,39 @@ def self_ensemble(model, data_dict, num_frame, device):
     from itertools import product
     from copy import deepcopy
     # list_angle = list(range(4))
-    list_angle = [0] * 4
-    # list_flip = [True, False]
-    list_flip = [False, False]
-    
+    # list_angle = [0] * 4
+    list_angle = [0]
+    # list_flip = [False, True]
+    # list_flip = [True]
+    list_flip = [False]
+
     burst = data_dict['burst']
     n_ensemble = len(list_angle) * len(list_flip)
     ensemble_burst = [deepcopy(data_dict) for _ in range(n_ensemble)]
     for i, (angle, flip) in enumerate(product(list_angle, list_flip)):
+        # temp = rotate_image(flip_image(burst, flip=flip), angle=angle)
+        # for j in range(temp.shape[0]):
+        #     temp2 = (temp[j].permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
+        #     cv2.imwrite(os.path.join('temp', '{}_{}.png'.format(i, j)), temp2[:, :, [0, 1, 3]])
         ensemble_burst[i]['burst'] = rotate_image(flip_image(deepcopy(burst), flip=flip), angle=angle)
+
+        for j in range(ensemble_burst[i]['burst'].shape[0]):
+            temp = ensemble_burst[i]['burst'][j]
+            temp = (temp.permute(1, 2, 0).clamp(0.0, 1.0) * (2 ** 8 - 1)).cpu().numpy().astype(np.uint8)
+            cv2.imwrite(os.path.join('temp', '{}_{}.png'.format(i, j)), temp[:, :, [0, 1, 3]])
+
         # aug = rotate_image(flip_image(deepcopy(burst), flip=flip), angle=angle)
         # assert (burst == flip_image(rotate_image(deepcopy(aug), angle=-angle), flip=flip)).all()
-        
+
     net_pred = [burst_ensemble(model, dic, num_frame, device) for dic in ensemble_burst]
+    # net_pred = [model.pred(dic)['pred'] for dic in ensemble_burst]
     
     for i, (angle, flip) in enumerate(product(list_angle, list_flip)):
         net_pred[i] = flip_image(rotate_image(net_pred[i], angle=-angle), flip=flip)
     
-    net_pred = torch.mean(torch.stack(net_pred), axis=0)
+    # net_pred = torch.mean(torch.stack(net_pred), axis=0)
     
-    return net_pred.clamp(0.0, 1.0)
+    return net_pred[0].clamp(0.0, 1.0)
 
 
 def flip_image(image, flip=True):
@@ -227,7 +248,6 @@ def flip_image(image, flip=True):
                 image[i] = image[i][:, :, torch.arange(width - 1, -1, -1)]
         else:
             raise ValueError
-                
     return image
             
     
@@ -241,7 +261,6 @@ def rotate_image(image, angle=1):
                 image[i] = torch.rot90(image[i], angle, [1, 2])
         else:
             raise ValueError
-                            
     return image
     
     
@@ -256,10 +275,28 @@ def burst_ensemble(model, data_dict, num_frame, device):
     ensemble_burst.to(device)
     data_dict['burst'] = ensemble_burst
 
+    up = nn.Upsample(scale_factor=4, mode='bilinear')
+
     with torch.no_grad():
         ret_dict = model.pred(data_dict)
         net_pred = torch.mean(ret_dict['pred'], axis=0)
-    
+
+    for i in range(ret_dict['refined_flow'].shape[0]):
+        for j in range(ret_dict['refined_flow'].shape[1]):
+            img = ret_dict['pred'][i].cpu().detach().clamp(0.0, 1.0).permute(1, 2, 0).numpy()*(2**8 - 1)
+            img = img.astype(np.uint8)
+            flow = up(ret_dict['refined_flow'][i, j].unsqueeze(0)).squeeze(0)
+            # flow = F.interpolate(ret_dict['refined_flow'][i, j], size=384, mode='linear')
+            
+            flow = flow.cpu().detach().permute(1, 2, 0).numpy()
+            flow = flow2color(flow)
+
+            temp = cv2.addWeighted(img, 0.4, flow, 0.6, 0)
+
+            cv2.imwrite(os.path.join('temp', 'f_{}_{}.png'.format(i, j)), temp)
+            # flow = cv2.addWeighted(frame_gt, alpha, heatmap, 1 - alpha, 0)
+
+                
     data_dict['burst'] = burst
     
     return net_pred.clamp(0.0, 1.0)
@@ -296,6 +333,7 @@ def main():
 
     print('OUTPUT DIRNAME: {}'.format(cfg.OUTPUT_DIR))
 
+    random.seed(cfg.SEED)
     torch.manual_seed(cfg.SEED)
     np.random.seed(cfg.SEED)
 

@@ -3,6 +3,7 @@ import os
 import shutil
 import numpy as np
 import datetime
+import sys
 
 import torch
 from torch.utils.data import DataLoader, RandomSampler
@@ -93,13 +94,17 @@ def train(args, cfg):
             denoise_model_path = os.path.dirname(model_path)[:-5] + "denoise_model/" + 'iteration_{}.pth'.format(args.resume_iter)
             model.denoise_model.load_state_dict(torch.load(denoise_model_path))
         optimizer.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'optimizer', 'iteration_{}.pth'.format(args.resume_iter))))
-        scheduler.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'scheduler', 'iteration_{}.pth'.format(args.resume_iter))))
+        # scheduler.load_state_dict(torch.load(os.path.join(cfg.OUTPUT_DIR, 'scheduler', 'iteration_{}.pth'.format(args.resume_iter))))
+        for group in optimizer.param_groups:
+            group['lr'] = cfg.SOLVER.LR
+        scheduler.last_epoch = args.resume_iter
     elif cfg.SOLVER.PRETRAIN_MODEL != '':
         model_path = cfg.SOLVER.PRETRAIN_MODEL
         print(f'load pretrain model from {model_path}')
         model.model.load_state_dict(fix_model_state_dict(torch.load(model_path)))
         if model.flow_refine:
-            FR_model_path = os.path.dirname(model_path)[:-5] + "FR_model/" + os.path.basename(cfg.SOLVER.PRETRAIN_MODEL)
+            # FR_model_path = os.path.dirname(model_path) + "FR_model/" + os.path.basename(cfg.SOLVER.PRETRAIN_MODEL)
+            FR_model_path = cfg.SOLVER.PRETRAIN_FRMODEL
             model.FR_model.load_state_dict(torch.load(FR_model_path))
         if model.denoise_burst:
             denoise_model_path = os.path.dirname(model_path)[:-5] + "denoise_model/" + os.path.basename(cfg.SOLVER.PRETRAIN_MODEL)
@@ -126,12 +131,12 @@ def main():
         print('Configration file is loaded from {}'.format(args.config_file))
         cfg.merge_from_file(args.config_file)
     
-    if len(args.output_dirname) == 0:
-        dt_now = datetime.datetime.now()
-        output_dirname = os.path.join('output', str(dt_now.date()) + '_' + str(dt_now.time()))
-    else:
-        output_dirname = args.output_dirname
-    cfg.OUTPUT_DIR = output_dirname
+    # if len(args.output_dirname) == 0:
+    #     dt_now = datetime.datetime.now()
+    #     output_dirname = os.path.join('output', str(dt_now.date()) + '_' + str(dt_now.time()))
+    # else:
+    #     output_dirname = args.output_dirname
+    # cfg.OUTPUT_DIR = output_dirname
     cfg.freeze()
 
     print('output dirname: {}'.format(cfg.OUTPUT_DIR))
@@ -148,8 +153,10 @@ def main():
 
     if not args.debug:
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
-        if not len(args.config_file) == 0:
+        if not len(args.config_file) == 0 and args.resume_iter == 0:
             shutil.copy2(args.config_file, os.path.join(cfg.OUTPUT_DIR, 'config.yaml'))
+
+    print(cfg.DATASET.TRAIN_SYNTHETIC)
 
     train(args, cfg)
 
